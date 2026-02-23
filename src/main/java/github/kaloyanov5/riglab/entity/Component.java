@@ -1,5 +1,6 @@
 package github.kaloyanov5.riglab.entity;
 
+import github.kaloyanov5.riglab.entity.component_details.*;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,4 +31,28 @@ public class Component {
 
     @Positive
     private Integer powerConsumption; // watts
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CpuDetails cpuDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private GpuDetails gpuDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private MotherboardDetails motherboardDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private RamDetails ramDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private PsuDetails psuDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CaseDetails caseDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private StorageDetails storageDetails;
+
+    @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CoolerDetails coolerDetails;
 }
