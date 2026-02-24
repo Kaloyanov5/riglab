@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Schema(description = "Request to create or update a PC component")
 public record ComponentRequest(
@@ -24,9 +25,12 @@ public record ComponentRequest(
         @Schema(description = "Price in USD", example = "349.99")
         Double price,
 
-        @Positive(message = "Power consumption must be positive")
+        @PositiveOrZero(message = "Power consumption must be zero or positive")
         @Schema(description = "Power consumption in watts (for PSU this is the output wattage)", example = "120")
         Integer powerConsumption,
+
+        @Schema(description = "Image URL for the component", example = "https://example.com/images/cpu.png")
+        String imageUrl,
 
         // CPU-specific details
         @Schema(description = "CPU socket type", example = "AM5")

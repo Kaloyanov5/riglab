@@ -15,6 +15,13 @@ import java.util.List;
 public class CompatibilityService {
 
     public void validateBuildCompatibility(Build build) {
+        List<String> errors = checkBuildCompatibility(build);
+        if (!errors.isEmpty()) {
+            throw new CompatibilityException(String.join("; ", errors));
+        }
+    }
+
+    public List<String> checkBuildCompatibility(Build build) {
         List<String> errors = new ArrayList<>();
 
         validateComponentTypes(build, errors);
@@ -26,9 +33,7 @@ public class CompatibilityService {
         validateCoolerSocketSupport(build, errors);
         validatePowerRequirements(build, errors);
 
-        if (!errors.isEmpty()) {
-            throw new CompatibilityException(String.join("; ", errors));
-        }
+        return errors;
     }
 
     private void validateComponentTypes(Build build, List<String> errors) {

@@ -8,6 +8,8 @@ import github.kaloyanov5.riglab.entity.component_details.*;
 import github.kaloyanov5.riglab.exception.ResourceNotFoundException;
 import github.kaloyanov5.riglab.repository.ComponentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,10 @@ public class ComponentService {
                 .toList();
     }
 
+    public Page<ComponentResponse> getAllComponentsPaged(Pageable pageable) {
+        return componentRepository.findAll(pageable).map(ComponentResponse::fromEntity);
+    }
+
     public ComponentResponse getComponentById(Long id) {
         return componentRepository.findById(id)
                 .map(ComponentResponse::fromEntity)
@@ -40,11 +46,28 @@ public class ComponentService {
                 .toList();
     }
 
+    public Page<ComponentResponse> getComponentsByTypePaged(ComponentType type, Pageable pageable) {
+        return componentRepository.findByType(type, pageable).map(ComponentResponse::fromEntity);
+    }
+
     public List<ComponentResponse> searchComponents(String name) {
         return componentRepository.findByNameContainingIgnoreCase(name)
                 .stream()
                 .map(ComponentResponse::fromEntity)
                 .toList();
+    }
+
+    public Page<ComponentResponse> searchComponentsPaged(String name, ComponentType type, Pageable pageable) {
+        if (type != null && name != null && !name.isBlank()) {
+            return componentRepository.findByTypeAndNameContainingIgnoreCase(type, name, pageable)
+                    .map(ComponentResponse::fromEntity);
+        } else if (type != null) {
+            return componentRepository.findByType(type, pageable).map(ComponentResponse::fromEntity);
+        } else if (name != null && !name.isBlank()) {
+            return componentRepository.findByNameContainingIgnoreCase(name, pageable)
+                    .map(ComponentResponse::fromEntity);
+        }
+        return componentRepository.findAll(pageable).map(ComponentResponse::fromEntity);
     }
 
     @Transactional
@@ -55,6 +78,7 @@ public class ComponentService {
         component.setType(request.type());
         component.setPrice(request.price());
         component.setPowerConsumption(request.powerConsumption());
+        component.setImageUrl(request.imageUrl());
 
         applyDetails(component, request);
 
@@ -69,13 +93,18 @@ public class ComponentService {
 
         component.setName(request.name());
         component.setBrand(request.brand());
-        component.setType(request.type());
         component.setPrice(request.price());
         component.setPowerConsumption(request.powerConsumption());
+        component.setImageUrl(request.imageUrl());
 
-        // Clear old details if type changed
-        clearDetails(component);
-        applyDetails(component, request);
+        // If type changed, clear old details first
+        if (component.getType() != request.type()) {
+            clearDetails(component);
+            componentRepository.saveAndFlush(component);
+            component.setType(request.type());
+        }
+
+        updateDetails(component, request);
 
         Component saved = componentRepository.save(component);
         return ComponentResponse.fromEntity(saved);
@@ -197,6 +226,124 @@ public class ComponentService {
         component.setCaseDetails(null);
         component.setStorageDetails(null);
         component.setCoolerDetails(null);
+    }
+
+    private void updateDetails(Component component, ComponentRequest request) {
+        switch (request.type()) {
+            case CPU -> {
+                if (request.cpuSocket() != null) {
+                    CpuDetails details = component.getCpuDetails();
+                    if (details == null) {
+                        details = new CpuDetails();
+                        details.setComponent(component);
+                        component.setCpuDetails(details);
+                    }
+                    details.setSocket(request.cpuSocket());
+                    details.setCores(request.cpuCores());
+                    details.setThreads(request.cpuThreads());
+                    details.setBaseClock(request.cpuBaseClock());
+                    details.setBoostClock(request.cpuBoostClock());
+                }
+            }
+            case GPU -> {
+                if (request.gpuVram() != null || request.gpuLengthMm() != null) {
+                    GpuDetails details = component.getGpuDetails();
+                    if (details == null) {
+                        details = new GpuDetails();
+                        details.setComponent(component);
+                        component.setGpuDetails(details);
+                    }
+                    details.setVram(request.gpuVram());
+                    details.setLengthMm(request.gpuLengthMm());
+                    details.setRecommendedPsu(request.gpuRecommendedPsu());
+                    details.setPerformanceScore(request.gpuPerformanceScore());
+                }
+            }
+            case MOTHERBOARD -> {
+                if (request.mbSocket() != null) {
+                    MotherboardDetails details = component.getMotherboardDetails();
+                    if (details == null) {
+                        details = new MotherboardDetails();
+                        details.setComponent(component);
+                        component.setMotherboardDetails(details);
+                    }
+                    details.setSocket(request.mbSocket());
+                    details.setChipset(request.mbChipset());
+                    details.setFormFactor(request.mbFormFactor());
+                    details.setSupportedRamType(request.mbSupportedRamType());
+                    details.setRamSlots(request.mbRamSlots());
+                    details.setM2Slots(request.mbM2Slots());
+                    details.setSataConnectors(request.mbSataConnectors());
+                }
+            }
+            case RAM -> {
+                if (request.ramType() != null) {
+                    RamDetails details = component.getRamDetails();
+                    if (details == null) {
+                        details = new RamDetails();
+                        details.setComponent(component);
+                        component.setRamDetails(details);
+                    }
+                    details.setCapacityGb(request.ramCapacityGb());
+                    details.setType(request.ramType());
+                    details.setSpeedMhz(request.ramSpeedMhz());
+                }
+            }
+            case PSU -> {
+                if (request.psuWattage() != null) {
+                    PsuDetails details = component.getPsuDetails();
+                    if (details == null) {
+                        details = new PsuDetails();
+                        details.setComponent(component);
+                        component.setPsuDetails(details);
+                    }
+                    details.setWattage(request.psuWattage());
+                    details.setEfficiencyRating(request.psuEfficiencyRating());
+                }
+            }
+            case CASE -> {
+                if (request.caseSupportedFormFactor() != null) {
+                    CaseDetails details = component.getCaseDetails();
+                    if (details == null) {
+                        details = new CaseDetails();
+                        details.setComponent(component);
+                        component.setCaseDetails(details);
+                    }
+                    details.setSupportedFormFactor(request.caseSupportedFormFactor());
+                    details.setMaxGpuLengthMm(request.caseMaxGpuLengthMm());
+                }
+            }
+            case STORAGE -> {
+                if (request.storageType() != null) {
+                    StorageDetails details = component.getStorageDetails();
+                    if (details == null) {
+                        details = new StorageDetails();
+                        details.setComponent(component);
+                        component.setStorageDetails(details);
+                    }
+                    details.setCapacityGb(request.storageCapacityGb());
+                    details.setStorageType(request.storageType());
+                    details.setInterfaceType(request.storageInterfaceType());
+                    details.setReadSpeedMbps(request.storageReadSpeedMbps());
+                    details.setWriteSpeedMbps(request.storageWriteSpeedMbps());
+                }
+            }
+            case COOLER -> {
+                if (request.coolerType() != null) {
+                    CoolerDetails details = component.getCoolerDetails();
+                    if (details == null) {
+                        details = new CoolerDetails();
+                        details.setComponent(component);
+                        component.setCoolerDetails(details);
+                    }
+                    details.setCoolerType(request.coolerType());
+                    details.setFanSizeMm(request.coolerFanSizeMm());
+                    details.setMaxTdp(request.coolerMaxTdp());
+                    details.setSupportedSockets(request.coolerSupportedSockets());
+                    details.setNoiseLevel(request.coolerNoiseLevel());
+                }
+            }
+        }
     }
 }
 

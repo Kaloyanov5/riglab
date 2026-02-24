@@ -11,6 +11,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +33,21 @@ public class ComponentController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved all components")
     public ResponseEntity<List<ComponentResponse>> getAllComponents() {
         return ResponseEntity.ok(componentService.getAllComponents());
+    }
+
+    @GetMapping("/paged")
+    @Operation(summary = "Get components (paginated)", description = "Retrieve components with pagination, optional type filter and name search")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved components page")
+    public ResponseEntity<Page<ComponentResponse>> getComponentsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) ComponentType type,
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        PageRequest pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(componentService.searchComponentsPaged(name, type, pageable));
     }
 
     @GetMapping("/{id}")
@@ -94,4 +112,3 @@ public class ComponentController {
         return ResponseEntity.noContent().build();
     }
 }
-

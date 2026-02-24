@@ -16,6 +16,7 @@ public record ComponentResponse(
         ComponentType type,
         Double price,
         Integer powerConsumption,
+        String imageUrl,
         @Schema(description = "Type-specific component details (varies by component type)")
         Map<String, Object> details
 ) {
@@ -29,6 +30,7 @@ public record ComponentResponse(
                 component.getType(),
                 component.getPrice(),
                 component.getPowerConsumption(),
+                component.getImageUrl(),
                 details.isEmpty() ? null : details
         );
     }
