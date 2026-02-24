@@ -1,7 +1,7 @@
-// ===== API Base =====
+// ===== RigLab Build Configurator (index.html) =====
 const API = '/api';
 
-// ===== Utility =====
+// ---- Utility ----
 function toast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const el = document.createElement('div');
@@ -26,115 +26,7 @@ async function apiFetch(path, options = {}) {
 }
 
 function formatPrice(price) {
-    return price != null ? `$${price.toFixed(2)}` : '—';
-}
-
-// ===== Tab Navigation =====
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-
-        if (btn.dataset.tab === 'builds') loadBuilds();
-        if (btn.dataset.tab === 'components') loadComponents();
-    });
-});
-
-// ===== Modal Helpers =====
-function openModal(id) {
-    document.getElementById(id).classList.remove('hidden');
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
-
-document.querySelectorAll('[data-close]').forEach(btn => {
-    btn.addEventListener('click', () => closeModal(btn.dataset.close));
-});
-
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeModal(overlay.id);
-    });
-});
-
-// ===================================================================
-//  COMPONENTS
-// ===================================================================
-
-let allComponents = [];
-
-async function loadComponents() {
-    const list = document.getElementById('components-list');
-    list.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading components...</p></div>';
-
-    try {
-        const type = document.getElementById('filter-type').value;
-        const name = document.getElementById('search-name').value.trim();
-
-        let components;
-        if (name) {
-            components = await apiFetch(`/components/search?name=${encodeURIComponent(name)}`);
-            if (type) components = components.filter(c => c.type === type);
-        } else if (type) {
-            components = await apiFetch(`/components/type/${type}`);
-        } else {
-            components = await apiFetch('/components');
-        }
-        allComponents = components;
-        renderComponents(components);
-    } catch (err) {
-        list.innerHTML = `<div class="empty-state"><p>Error loading components: ${err.message}</p></div>`;
-    }
-}
-
-function renderComponents(components) {
-    const list = document.getElementById('components-list');
-    if (components.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">&#128187;</div>
-                <p>No components found. Add your first component!</p>
-            </div>`;
-        return;
-    }
-
-    list.innerHTML = components.map(c => `
-        <div class="card">
-            <div class="card-header">
-                <h3>${esc(c.name)}</h3>
-                <span class="card-type" data-type="${c.type}">${c.type}</span>
-            </div>
-            <div class="card-brand">${esc(c.brand)}</div>
-            <div class="card-details">
-                ${renderDetailChips(c)}
-            </div>
-            <div class="card-footer">
-                <div>
-                    <span class="card-price">${formatPrice(c.price)}</span>
-                    ${c.powerConsumption ? `<span class="card-power">&nbsp;&bull; ${c.powerConsumption}W</span>` : ''}
-                </div>
-                <div class="card-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="editComponent(${c.id})">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteComponent(${c.id})">Delete</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function renderDetailChips(c) {
-    if (!c.details) return '';
-    return Object.entries(c.details)
-        .map(([k, v]) => `<span class="card-detail"><strong>${formatDetailKey(k)}:</strong> ${esc(String(v))}</span>`)
-        .join('');
-}
-
-function formatDetailKey(key) {
-    return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+    return price != null ? `$${price.toFixed(2)}` : '';
 }
 
 function esc(str) {
@@ -143,447 +35,429 @@ function esc(str) {
     return el.innerHTML;
 }
 
-// ===== Filter / Search =====
-document.getElementById('filter-type').addEventListener('change', loadComponents);
+// ---- State ----
+const selections = {
+    cpu: null, motherboard: null, gpu: null, psu: null, case: null, cooler: null,
+    'ram-0': null, 'ram-1': null, 'ram-2': null, 'ram-3': null,
+    'storage-0': null, 'storage-1': null,
+};
 
-let searchTimeout;
-document.getElementById('search-name').addEventListener('input', () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadComponents, 300);
-});
+let componentsByType = {};
+let incompatibleIds = new Set();
 
-// ===== Component CRUD =====
-document.getElementById('btn-add-component').addEventListener('click', () => {
-    document.getElementById('component-modal-title').textContent = 'Add Component';
-    document.getElementById('component-form').reset();
-    document.getElementById('comp-edit-id').value = '';
-    document.getElementById('detail-fields').innerHTML = '';
-    document.getElementById('comp-submit-btn').textContent = 'Save';
-    openModal('component-modal');
-});
-
-// Dynamic detail fields based on type selection
-document.getElementById('comp-type').addEventListener('change', (e) => {
-    renderDetailFields(e.target.value, {});
-});
-
-function renderDetailFields(type, data) {
-    const container = document.getElementById('detail-fields');
-    const fields = getFieldsForType(type);
-    if (fields.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-    container.innerHTML = `<h4>${type} Details</h4>` +
-        fields.map(f => `
-            <div class="form-group">
-                <label for="detail-${f.key}">${f.label}</label>
-                <input type="${f.inputType}" id="detail-${f.key}" class="input"
-                    ${f.step ? `step="${f.step}"` : ''} ${f.min != null ? `min="${f.min}"` : ''}
-                    value="${data[f.key] != null ? data[f.key] : ''}">
-            </div>
-        `).join('');
-}
-
-function getFieldsForType(type) {
-    switch (type) {
-        case 'CPU': return [
-            { key: 'cpuSocket', label: 'Socket', inputType: 'text' },
-            { key: 'cpuCores', label: 'Cores', inputType: 'number', min: 1 },
-            { key: 'cpuThreads', label: 'Threads', inputType: 'number', min: 1 },
-            { key: 'cpuBaseClock', label: 'Base Clock (GHz)', inputType: 'number', step: '0.01', min: 0 },
-            { key: 'cpuBoostClock', label: 'Boost Clock (GHz)', inputType: 'number', step: '0.01', min: 0 },
-        ];
-        case 'GPU': return [
-            { key: 'gpuVram', label: 'VRAM (GB)', inputType: 'number', min: 1 },
-            { key: 'gpuLengthMm', label: 'Length (mm)', inputType: 'number', min: 1 },
-            { key: 'gpuRecommendedPsu', label: 'Recommended PSU (W)', inputType: 'number', min: 1 },
-            { key: 'gpuPerformanceScore', label: 'Performance Score', inputType: 'number', min: 0 },
-        ];
-        case 'MOTHERBOARD': return [
-            { key: 'mbSocket', label: 'CPU Socket', inputType: 'text' },
-            { key: 'mbChipset', label: 'Chipset', inputType: 'text' },
-            { key: 'mbFormFactor', label: 'Form Factor', inputType: 'text' },
-            { key: 'mbSupportedRamType', label: 'Supported RAM Type', inputType: 'text' },
-            { key: 'mbRamSlots', label: 'RAM Slots', inputType: 'number', min: 1 },
-            { key: 'mbM2Slots', label: 'M.2 Slots', inputType: 'number', min: 0 },
-            { key: 'mbSataConnectors', label: 'SATA Connectors', inputType: 'number', min: 0 },
-        ];
-        case 'RAM': return [
-            { key: 'ramCapacityGb', label: 'Capacity (GB)', inputType: 'number', min: 1 },
-            { key: 'ramType', label: 'Type (DDR4/DDR5)', inputType: 'text' },
-            { key: 'ramSpeedMhz', label: 'Speed (MHz)', inputType: 'number', min: 1 },
-        ];
-        case 'PSU': return [
-            { key: 'psuWattage', label: 'Wattage (W)', inputType: 'number', min: 1 },
-            { key: 'psuEfficiencyRating', label: 'Efficiency Rating', inputType: 'text' },
-        ];
-        case 'CASE': return [
-            { key: 'caseSupportedFormFactor', label: 'Supported Form Factors', inputType: 'text' },
-            { key: 'caseMaxGpuLengthMm', label: 'Max GPU Length (mm)', inputType: 'number', min: 1 },
-        ];
-        case 'STORAGE': return [
-            { key: 'storageCapacityGb', label: 'Capacity (GB)', inputType: 'number', min: 1 },
-            { key: 'storageType', label: 'Type (HDD/SSD/NVMe)', inputType: 'text' },
-            { key: 'storageInterfaceType', label: 'Interface (SATA/M.2)', inputType: 'text' },
-            { key: 'storageReadSpeedMbps', label: 'Read Speed (MB/s)', inputType: 'number', min: 0 },
-            { key: 'storageWriteSpeedMbps', label: 'Write Speed (MB/s)', inputType: 'number', min: 0 },
-        ];
-        case 'COOLER': return [
-            { key: 'coolerType', label: 'Cooler Type', inputType: 'text' },
-            { key: 'coolerFanSizeMm', label: 'Fan Size (mm)', inputType: 'number', min: 1 },
-            { key: 'coolerMaxTdp', label: 'Max TDP (W)', inputType: 'number', min: 1 },
-            { key: 'coolerSupportedSockets', label: 'Supported Sockets', inputType: 'text' },
-            { key: 'coolerNoiseLevel', label: 'Noise Level (dB)', inputType: 'number', min: 0 },
-        ];
-        default: return [];
-    }
-}
-
-// Map from API response detail keys to request body keys
-function detailsToRequestFields(type, details) {
-    if (!details) return {};
-    const map = {
-        CPU: { socket: 'cpuSocket', cores: 'cpuCores', threads: 'cpuThreads', baseClock: 'cpuBaseClock', boostClock: 'cpuBoostClock' },
-        GPU: { vram: 'gpuVram', lengthMm: 'gpuLengthMm', recommendedPsu: 'gpuRecommendedPsu', performanceScore: 'gpuPerformanceScore' },
-        MOTHERBOARD: { socket: 'mbSocket', chipset: 'mbChipset', formFactor: 'mbFormFactor', supportedRamType: 'mbSupportedRamType', ramSlots: 'mbRamSlots', m2Slots: 'mbM2Slots', sataConnectors: 'mbSataConnectors' },
-        RAM: { capacityGb: 'ramCapacityGb', type: 'ramType', speedMhz: 'ramSpeedMhz' },
-        PSU: { wattage: 'psuWattage', efficiencyRating: 'psuEfficiencyRating' },
-        CASE: { supportedFormFactor: 'caseSupportedFormFactor', maxGpuLengthMm: 'caseMaxGpuLengthMm' },
-        STORAGE: { capacityGb: 'storageCapacityGb', storageType: 'storageType', interfaceType: 'storageInterfaceType', readSpeedMbps: 'storageReadSpeedMbps', writeSpeedMbps: 'storageWriteSpeedMbps' },
-        COOLER: { coolerType: 'coolerType', fanSizeMm: 'coolerFanSizeMm', maxTdp: 'coolerMaxTdp', supportedSockets: 'coolerSupportedSockets', noiseLevel: 'coolerNoiseLevel' },
-    };
-    const result = {};
-    const mapping = map[type] || {};
-    for (const [apiKey, reqKey] of Object.entries(mapping)) {
-        if (details[apiKey] != null) result[reqKey] = details[apiKey];
-    }
-    return result;
-}
-
-async function editComponent(id) {
+// ---- Load all components ----
+async function loadAllComponents() {
     try {
-        const comp = await apiFetch(`/components/${id}`);
-        document.getElementById('component-modal-title').textContent = 'Edit Component';
-        document.getElementById('comp-edit-id').value = id;
-        document.getElementById('comp-name').value = comp.name;
-        document.getElementById('comp-brand').value = comp.brand;
-        document.getElementById('comp-type').value = comp.type;
-        document.getElementById('comp-price').value = comp.price || '';
-        document.getElementById('comp-power').value = comp.powerConsumption || '';
-        document.getElementById('comp-submit-btn').textContent = 'Update';
-
-        const mapped = detailsToRequestFields(comp.type, comp.details);
-        renderDetailFields(comp.type, mapped);
-
-        openModal('component-modal');
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-}
-
-async function deleteComponent(id) {
-    if (!confirm('Delete this component?')) return;
-    try {
-        await apiFetch(`/components/${id}`, { method: 'DELETE' });
-        toast('Component deleted');
-        loadComponents();
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-}
-
-document.getElementById('component-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const editId = document.getElementById('comp-edit-id').value;
-    const type = document.getElementById('comp-type').value;
-
-    const body = {
-        name: document.getElementById('comp-name').value,
-        brand: document.getElementById('comp-brand').value,
-        type: type,
-        price: parseFloat(document.getElementById('comp-price').value) || null,
-        powerConsumption: parseInt(document.getElementById('comp-power').value) || null,
-    };
-
-    // Collect detail fields
-    const fields = getFieldsForType(type);
-    for (const f of fields) {
-        const el = document.getElementById(`detail-${f.key}`);
-        if (el && el.value !== '') {
-            body[f.key] = f.inputType === 'number' ? (f.step ? parseFloat(el.value) : parseInt(el.value)) : el.value;
+        const all = await apiFetch('/components');
+        componentsByType = {};
+        for (const c of all) {
+            if (!componentsByType[c.type]) componentsByType[c.type] = [];
+            componentsByType[c.type].push(c);
         }
+    } catch (err) {
+        toast('Failed to load components: ' + err.message, 'error');
     }
+}
 
+// ---- Slot to type mapping ----
+function slotToType(slot) {
+    if (slot.startsWith('ram')) return 'RAM';
+    if (slot.startsWith('storage')) return 'STORAGE';
+    const map = { cpu: 'CPU', motherboard: 'MOTHERBOARD', gpu: 'GPU', psu: 'PSU', case: 'CASE', cooler: 'COOLER' };
+    return map[slot];
+}
+
+// ---- Compatibility check ----
+async function checkCompatibility() {
+    const buildReq = buildCurrentRequest();
     try {
-        if (editId) {
-            await apiFetch(`/components/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
-            toast('Component updated');
-        } else {
-            await apiFetch('/components', { method: 'POST', body: JSON.stringify(body) });
-            toast('Component created');
+        const result = await apiFetch('/builds/check-compatibility', {
+            method: 'POST',
+            body: JSON.stringify(buildReq),
+        });
+        return result;
+    } catch {
+        return { compatible: true, errors: [] };
+    }
+}
+
+function buildCurrentRequest() {
+    const ramIds = [];
+    for (let i = 0; i < 4; i++) {
+        if (selections[`ram-${i}`]) ramIds.push(selections[`ram-${i}`].id);
+    }
+    const storageIds = [];
+    for (let i = 0; i < 2; i++) {
+        if (selections[`storage-${i}`]) storageIds.push(selections[`storage-${i}`].id);
+    }
+    const coolerIds = selections.cooler ? [selections.cooler.id] : [];
+
+    return {
+        name: document.getElementById('build-name').value || 'My Build',
+        cpuId: selections.cpu ? selections.cpu.id : null,
+        gpuId: selections.gpu ? selections.gpu.id : null,
+        motherboardId: selections.motherboard ? selections.motherboard.id : null,
+        ramIds: ramIds.length > 0 ? ramIds : null,
+        psuId: selections.psu ? selections.psu.id : null,
+        caseId: selections.case ? selections.case.id : null,
+        storageIds: storageIds.length > 0 ? storageIds : null,
+        coolerIds: coolerIds.length > 0 ? coolerIds : null,
+    };
+}
+
+// Check which specific component IDs are incompatible with current selections
+async function updateIncompatibleComponents(slotBeingChanged, candidateType) {
+    incompatibleIds = new Set();
+    const candidates = componentsByType[candidateType] || [];
+    const currentReq = buildCurrentRequest();
+
+    // For each candidate, simulate adding it and check
+    const checks = candidates.map(async (comp) => {
+        const testReq = { ...currentReq };
+
+        // Replace the slot being changed with this candidate
+        if (slotBeingChanged === 'cpu') testReq.cpuId = comp.id;
+        else if (slotBeingChanged === 'gpu') testReq.gpuId = comp.id;
+        else if (slotBeingChanged === 'motherboard') testReq.motherboardId = comp.id;
+        else if (slotBeingChanged === 'psu') testReq.psuId = comp.id;
+        else if (slotBeingChanged === 'case') testReq.caseId = comp.id;
+        else if (slotBeingChanged === 'cooler') testReq.coolerIds = [comp.id];
+        else if (slotBeingChanged.startsWith('ram')) {
+            const idx = parseInt(slotBeingChanged.split('-')[1]);
+            const ramIds = [];
+            for (let i = 0; i < 4; i++) {
+                if (i === idx) ramIds.push(comp.id);
+                else if (selections[`ram-${i}`]) ramIds.push(selections[`ram-${i}`].id);
+            }
+            testReq.ramIds = ramIds.length > 0 ? ramIds : null;
+        } else if (slotBeingChanged.startsWith('storage')) {
+            const idx = parseInt(slotBeingChanged.split('-')[1]);
+            const storageIds = [];
+            for (let i = 0; i < 2; i++) {
+                if (i === idx) storageIds.push(comp.id);
+                else if (selections[`storage-${i}`]) storageIds.push(selections[`storage-${i}`].id);
+            }
+            testReq.storageIds = storageIds.length > 0 ? storageIds : null;
         }
-        closeModal('component-modal');
-        loadComponents();
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-});
 
-// ===================================================================
-//  BUILDS
-// ===================================================================
+        // Need at minimum something to check against
+        if (!testReq.cpuId && !testReq.motherboardId) return;
 
-async function loadBuilds() {
-    const list = document.getElementById('builds-list');
-    list.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading builds...</p></div>';
+        try {
+            const result = await apiFetch('/builds/check-compatibility', {
+                method: 'POST',
+                body: JSON.stringify(testReq),
+            });
+            if (!result.compatible) {
+                incompatibleIds.add(comp.id);
+            }
+        } catch {
+            // ignore
+        }
+    });
 
-    try {
-        const builds = await apiFetch('/builds');
-        renderBuilds(builds);
-    } catch (err) {
-        list.innerHTML = `<div class="empty-state"><p>Error loading builds: ${err.message}</p></div>`;
-    }
+    await Promise.all(checks);
 }
 
-function renderBuilds(builds) {
-    const list = document.getElementById('builds-list');
-    if (builds.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">&#128296;</div>
-                <p>No builds yet. Create your first PC build!</p>
-            </div>`;
-        return;
-    }
-
-    list.innerHTML = builds.map(b => `
-        <div class="card build-card" onclick="viewBuild(${b.id})">
-            <div class="card-header">
-                <h3>${esc(b.name)}</h3>
-            </div>
-            <div class="build-components">
-                ${b.cpu ? `<span class="build-chip">CPU: ${esc(b.cpu.name)}</span>` : ''}
-                ${b.gpu ? `<span class="build-chip">GPU: ${esc(b.gpu.name)}</span>` : ''}
-                ${b.motherboard ? `<span class="build-chip">MB: ${esc(b.motherboard.name)}</span>` : ''}
-                ${b.ramSticks.map(r => `<span class="build-chip">RAM: ${esc(r.name)}</span>`).join('')}
-                ${b.psu ? `<span class="build-chip">PSU: ${esc(b.psu.name)}</span>` : ''}
-                ${b.pcCase ? `<span class="build-chip">Case: ${esc(b.pcCase.name)}</span>` : ''}
-                ${b.storageDevices.map(s => `<span class="build-chip">Storage: ${esc(s.name)}</span>`).join('')}
-                ${b.coolers.map(c => `<span class="build-chip">Cooler: ${esc(c.name)}</span>`).join('')}
-            </div>
-            <div class="build-stats">
-                <div class="build-stat">Total: <span style="color: var(--success)">${formatPrice(b.totalPrice)}</span></div>
-                <div class="build-stat">Power: <span style="color: var(--warning)">${b.totalPowerConsumption || 0}W</span></div>
-            </div>
-            <div class="card-footer">
-                <div></div>
-                <div class="card-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editBuild(${b.id})">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteBuild(${b.id})">Delete</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+// ---- Dropdown rendering ----
+function getComponentMeta(comp) {
+    if (!comp.details) return comp.brand;
+    const parts = [comp.brand];
+    const d = comp.details;
+    if (d.socket) parts.push(d.socket);
+    if (d.cores) parts.push(d.cores + ' cores');
+    if (d.vram) parts.push(d.vram + 'GB VRAM');
+    if (d.formFactor) parts.push(d.formFactor);
+    if (d.supportedRamType) parts.push(d.supportedRamType);
+    if (d.capacityGb) parts.push(d.capacityGb + 'GB');
+    if (d.type) parts.push(d.type);
+    if (d.speedMhz) parts.push(d.speedMhz + 'MHz');
+    if (d.wattage) parts.push(d.wattage + 'W');
+    if (d.efficiencyRating) parts.push(d.efficiencyRating);
+    if (d.storageType) parts.push(d.storageType);
+    if (d.interfaceType) parts.push(d.interfaceType);
+    if (d.coolerType) parts.push(d.coolerType);
+    if (d.supportedFormFactor) parts.push(d.supportedFormFactor);
+    if (d.maxGpuLengthMm) parts.push('Max GPU ' + d.maxGpuLengthMm + 'mm');
+    return parts.join(' · ');
 }
 
-// Populate build form selects
-async function populateBuildSelects() {
-    try {
-        const components = await apiFetch('/components');
-        const byType = {};
+function renderDropdownOptions(panel, components, slot) {
+    let html = `<div class="dropdown-search"><input type="text" placeholder="Search..." data-slot="${slot}"></div>`;
+
+    if (components.length === 0) {
+        html += '<div class="dropdown-none">No components available</div>';
+    } else {
         for (const c of components) {
-            if (!byType[c.type]) byType[c.type] = [];
-            byType[c.type].push(c);
-        }
+            const isIncompat = incompatibleIds.has(c.id);
+            const cls = isIncompat ? 'dropdown-option incompatible' : 'dropdown-option';
+            const imgHtml = c.imageUrl
+                ? `<img class="opt-img" src="${esc(c.imageUrl)}" alt="" onerror="this.outerHTML='<div class=\\'opt-img-placeholder\\'>&#128187;</div>'">`
+                : '<div class="opt-img-placeholder">&#128187;</div>';
 
-        populateSelect('build-cpu', byType['CPU'] || [], true);
-        populateSelect('build-gpu', byType['GPU'] || [], true);
-        populateSelect('build-motherboard', byType['MOTHERBOARD'] || [], true);
-        populateSelect('build-psu', byType['PSU'] || [], true);
-        populateSelect('build-case', byType['CASE'] || [], true);
-        populateSelect('build-ram', byType['RAM'] || [], false);
-        populateSelect('build-storage', byType['STORAGE'] || [], false);
-        populateSelect('build-cooler', byType['COOLER'] || [], false);
-    } catch (err) {
-        toast('Failed to load components for build form', 'error');
-    }
-}
-
-function populateSelect(id, items, addEmpty) {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '';
-    if (addEmpty) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '— Select —';
-        sel.appendChild(opt);
-    }
-    for (const item of items) {
-        const opt = document.createElement('option');
-        opt.value = item.id;
-        opt.textContent = `${item.name} (${item.brand}) ${item.price ? '- ' + formatPrice(item.price) : ''}`;
-        sel.appendChild(opt);
-    }
-}
-
-document.getElementById('btn-add-build').addEventListener('click', async () => {
-    document.getElementById('build-modal-title').textContent = 'New Build';
-    document.getElementById('build-form').reset();
-    document.getElementById('build-edit-id').value = '';
-    document.getElementById('build-submit-btn').textContent = 'Create Build';
-    await populateBuildSelects();
-    openModal('build-modal');
-});
-
-async function editBuild(id) {
-    try {
-        const build = await apiFetch(`/builds/${id}`);
-        await populateBuildSelects();
-
-        document.getElementById('build-modal-title').textContent = 'Edit Build';
-        document.getElementById('build-edit-id').value = id;
-        document.getElementById('build-name').value = build.name;
-        document.getElementById('build-submit-btn').textContent = 'Update Build';
-
-        if (build.cpu) document.getElementById('build-cpu').value = build.cpu.id;
-        if (build.gpu) document.getElementById('build-gpu').value = build.gpu.id;
-        if (build.motherboard) document.getElementById('build-motherboard').value = build.motherboard.id;
-        if (build.psu) document.getElementById('build-psu').value = build.psu.id;
-        if (build.pcCase) document.getElementById('build-case').value = build.pcCase.id;
-
-        setMultiSelectValues('build-ram', build.ramSticks.map(r => r.id));
-        setMultiSelectValues('build-storage', build.storageDevices.map(s => s.id));
-        setMultiSelectValues('build-cooler', build.coolers.map(c => c.id));
-
-        openModal('build-modal');
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-}
-
-function setMultiSelectValues(id, values) {
-    const sel = document.getElementById(id);
-    const valSet = new Set(values.map(String));
-    for (const opt of sel.options) {
-        opt.selected = valSet.has(opt.value);
-    }
-}
-
-function getMultiSelectValues(id) {
-    const sel = document.getElementById(id);
-    return Array.from(sel.selectedOptions).map(o => parseInt(o.value)).filter(v => !isNaN(v));
-}
-
-async function deleteBuild(id) {
-    if (!confirm('Delete this build?')) return;
-    try {
-        await apiFetch(`/builds/${id}`, { method: 'DELETE' });
-        toast('Build deleted');
-        loadBuilds();
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-}
-
-document.getElementById('build-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const editId = document.getElementById('build-edit-id').value;
-
-    const body = {
-        name: document.getElementById('build-name').value,
-        cpuId: parseInt(document.getElementById('build-cpu').value) || null,
-        gpuId: parseInt(document.getElementById('build-gpu').value) || null,
-        motherboardId: parseInt(document.getElementById('build-motherboard').value) || null,
-        ramIds: getMultiSelectValues('build-ram'),
-        psuId: parseInt(document.getElementById('build-psu').value) || null,
-        caseId: parseInt(document.getElementById('build-case').value) || null,
-        storageIds: getMultiSelectValues('build-storage'),
-        coolerIds: getMultiSelectValues('build-cooler'),
-    };
-
-    try {
-        if (editId) {
-            await apiFetch(`/builds/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
-            toast('Build updated');
-        } else {
-            await apiFetch('/builds', { method: 'POST', body: JSON.stringify(body) });
-            toast('Build created');
-        }
-        closeModal('build-modal');
-        loadBuilds();
-    } catch (err) {
-        toast(err.message, 'error');
-    }
-});
-
-// ===== Build Detail View =====
-async function viewBuild(id) {
-    try {
-        const b = await apiFetch(`/builds/${id}`);
-        document.getElementById('build-detail-title').textContent = b.name;
-
-        const body = document.getElementById('build-detail-body');
-        body.innerHTML = `
-            <div class="build-detail-summary">
-                <div>
-                    <div class="stat-label">Total Price</div>
-                    <div class="stat-value price">${formatPrice(b.totalPrice)}</div>
+            html += `<div class="${cls}" data-id="${c.id}" data-slot="${slot}" ${isIncompat ? '' : ''}>
+                ${imgHtml}
+                <div class="opt-info">
+                    <div class="opt-name">${esc(c.name)}</div>
+                    <div class="opt-meta">${esc(getComponentMeta(c))}</div>
                 </div>
-                <div>
-                    <div class="stat-label">Power Draw</div>
-                    <div class="stat-value power">${b.totalPowerConsumption || 0}W</div>
-                </div>
+                <div class="opt-price">${formatPrice(c.price)}</div>
+                ${isIncompat ? '<span class="opt-incompat-badge">Incompatible</span>' : ''}
+            </div>`;
+        }
+    }
+
+    panel.innerHTML = html;
+
+    // Search within dropdown
+    const searchInput = panel.querySelector('.dropdown-search input');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const q = searchInput.value.toLowerCase();
+            panel.querySelectorAll('.dropdown-option').forEach(opt => {
+                const name = opt.querySelector('.opt-name').textContent.toLowerCase();
+                const meta = opt.querySelector('.opt-meta').textContent.toLowerCase();
+                opt.style.display = (name.includes(q) || meta.includes(q)) ? '' : 'none';
+            });
+        });
+        setTimeout(() => searchInput.focus(), 50);
+    }
+
+    // Click handlers
+    panel.querySelectorAll('.dropdown-option:not(.incompatible)').forEach(opt => {
+        opt.addEventListener('click', () => {
+            const compId = parseInt(opt.dataset.id);
+            const compSlot = opt.dataset.slot;
+            const type = slotToType(compSlot);
+            const comp = (componentsByType[type] || []).find(c => c.id === compId);
+            if (comp) selectComponent(compSlot, comp);
+        });
+    });
+}
+
+function updateTriggerDisplay(slot) {
+    const comp = selections[slot];
+    const trigger = document.querySelector(`#dropdown-${slot} .dropdown-trigger`);
+    if (!trigger) return;
+
+    if (!comp) {
+        const type = slotToType(slot);
+        const isRam = slot.startsWith('ram');
+        const isLocked = isRam && !selections.motherboard;
+        let placeholder = `Select ${type}...`;
+        if (slot === 'gpu' || slot.startsWith('storage') || slot === 'cooler') placeholder = `Select ${type} (optional)...`;
+        if (isLocked && slot === 'ram-0') placeholder = 'Select motherboard first...';
+        else if (isRam && slot !== 'ram-0') placeholder = 'Select RAM (optional)...';
+
+        trigger.innerHTML = `<span class="dropdown-placeholder">${placeholder}</span>`;
+        trigger.disabled = isLocked;
+    } else {
+        const imgHtml = comp.imageUrl
+            ? `<img class="comp-thumb" src="${esc(comp.imageUrl)}" alt="" onerror="this.outerHTML='<div class=\\'comp-thumb-placeholder\\'>&#128187;</div>'">`
+            : '<div class="comp-thumb-placeholder">&#128187;</div>';
+
+        trigger.innerHTML = `
+            ${imgHtml}
+            <div class="comp-info">
+                <div class="comp-title">${esc(comp.name)}</div>
+                <div class="comp-sub">${esc(getComponentMeta(comp))}</div>
             </div>
-
-            ${renderBuildSection('CPU', b.cpu)}
-            ${renderBuildSection('GPU', b.gpu)}
-            ${renderBuildSection('Motherboard', b.motherboard)}
-            ${renderBuildListSection('RAM', b.ramSticks)}
-            ${renderBuildSection('PSU', b.psu)}
-            ${renderBuildSection('Case', b.pcCase)}
-            ${renderBuildListSection('Storage', b.storageDevices)}
-            ${renderBuildListSection('Coolers', b.coolers)}
+            <button class="dropdown-clear" title="Clear selection">&times;</button>
         `;
+        trigger.disabled = false;
 
-        openModal('build-detail-modal');
-    } catch (err) {
-        toast(err.message, 'error');
+        // Clear button
+        trigger.querySelector('.dropdown-clear').addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearSelection(slot);
+        });
     }
 }
 
-function renderBuildSection(label, comp) {
-    if (!comp) return '';
-    return `
-        <div class="build-detail-section">
-            <h4>${label}</h4>
-            ${renderBuildComponent(comp)}
-        </div>`;
+// ---- Selection logic ----
+function selectComponent(slot, comp) {
+    selections[slot] = comp;
+    updateTriggerDisplay(slot);
+    closeAllDropdowns();
+
+    // Update price
+    const priceEl = document.getElementById(`price-${slot}`);
+    if (priceEl) priceEl.textContent = comp.price ? formatPrice(comp.price) : '—';
+
+    // If motherboard selected, unlock RAM
+    if (slot === 'motherboard') {
+        unlockRam();
+    }
+
+    // If first RAM selected, show extra RAM slots
+    if (slot === 'ram-0' && comp) {
+        showExtraRamSlots();
+    }
+
+    updateTotals();
 }
 
-function renderBuildListSection(label, list) {
-    if (!list || list.length === 0) return '';
-    return `
-        <div class="build-detail-section">
-            <h4>${label}</h4>
-            ${list.map(renderBuildComponent).join('')}
-        </div>`;
+function clearSelection(slot) {
+    selections[slot] = null;
+    updateTriggerDisplay(slot);
+
+    const priceEl = document.getElementById(`price-${slot}`);
+    if (priceEl) priceEl.textContent = '—';
+
+    // If motherboard cleared, lock RAM and clear RAM selections
+    if (slot === 'motherboard') {
+        lockRam();
+    }
+
+    // If first RAM cleared, hide extra and clear them
+    if (slot === 'ram-0') {
+        for (let i = 1; i <= 3; i++) {
+            selections[`ram-${i}`] = null;
+            updateTriggerDisplay(`ram-${i}`);
+            const rp = document.getElementById(`price-ram-${i}`);
+            if (rp) rp.textContent = '—';
+        }
+        hideExtraRamSlots();
+    }
+
+    updateTotals();
 }
 
-function renderBuildComponent(comp) {
-    const detailStr = comp.details
-        ? Object.entries(comp.details).map(([k, v]) => `${formatDetailKey(k)}: ${v}`).join(' | ')
-        : '';
-    return `
-        <div class="build-detail-component">
-            <div class="comp-name">${esc(comp.name)} <small style="color:var(--text-muted)">${esc(comp.brand)}</small></div>
-            <div class="comp-meta">
-                ${comp.price ? formatPrice(comp.price) : ''}
-                ${comp.powerConsumption ? ` &bull; ${comp.powerConsumption}W` : ''}
-                ${detailStr ? ` &bull; ${esc(detailStr)}` : ''}
-            </div>
-        </div>`;
+function unlockRam() {
+    const lockMsg = document.getElementById('ram-lock-msg');
+    if (lockMsg) lockMsg.style.display = 'none';
+
+    const trigger = document.querySelector('#dropdown-ram-0 .dropdown-trigger');
+    if (trigger) {
+        trigger.disabled = false;
+        if (!selections['ram-0']) {
+            trigger.innerHTML = '<span class="dropdown-placeholder">Select RAM...</span>';
+        }
+    }
 }
 
-// ===== Init =====
-loadComponents();
+function lockRam() {
+    const lockMsg = document.getElementById('ram-lock-msg');
+    if (lockMsg) lockMsg.style.display = '';
+
+    for (let i = 0; i < 4; i++) {
+        selections[`ram-${i}`] = null;
+        updateTriggerDisplay(`ram-${i}`);
+        const rp = document.getElementById(`price-ram-${i}`);
+        if (rp) rp.textContent = '—';
+    }
+
+    const trigger = document.querySelector('#dropdown-ram-0 .dropdown-trigger');
+    if (trigger) {
+        trigger.disabled = true;
+        trigger.innerHTML = '<span class="dropdown-placeholder">Select motherboard first...</span>';
+    }
+
+    hideExtraRamSlots();
+}
+
+function showExtraRamSlots() {
+    document.querySelectorAll('.ram-extra').forEach(el => el.classList.remove('hidden'));
+}
+
+function hideExtraRamSlots() {
+    document.querySelectorAll('.ram-extra').forEach(el => el.classList.add('hidden'));
+}
+
+function updateTotals() {
+    let totalPrice = 0;
+    let totalPower = 0;
+
+    for (const [, comp] of Object.entries(selections)) {
+        if (comp) {
+            if (comp.price) totalPrice += comp.price;
+            if (comp.powerConsumption) totalPower += comp.powerConsumption;
+        }
+    }
+
+    document.getElementById('total-price').textContent = `$${totalPrice.toFixed(2)}`;
+    document.getElementById('total-power').textContent = `${totalPower}W`;
+}
+
+// ---- Dropdown open/close ----
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.add('hidden'));
+}
+
+async function openDropdown(slot) {
+    closeAllDropdowns();
+    const type = slotToType(slot);
+    const panel = document.querySelector(`#dropdown-${slot} .dropdown-panel`);
+    if (!panel) return;
+
+    // Check if RAM is locked
+    if (slot.startsWith('ram') && !selections.motherboard) return;
+
+    const components = componentsByType[type] || [];
+
+    // Run compatibility checks
+    await updateIncompatibleComponents(slot, type);
+
+    renderDropdownOptions(panel, components, slot);
+
+    // Determine if dropdown should open upward or downward
+    panel.classList.remove('drop-up');
+    panel.classList.remove('hidden');
+
+    const trigger = document.querySelector(`#dropdown-${slot} .dropdown-trigger`);
+    if (trigger) {
+        const triggerRect = trigger.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+        const panelHeight = Math.min(panel.scrollHeight, 320);
+        if (spaceBelow < panelHeight + 20 && triggerRect.top > panelHeight) {
+            panel.classList.add('drop-up');
+        }
+    }
+}
+
+// Event: trigger clicks
+document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.dropdown-trigger');
+    if (trigger && !trigger.disabled) {
+        const slot = trigger.dataset.slot;
+        const panel = document.querySelector(`#dropdown-${slot} .dropdown-panel`);
+        if (panel && !panel.classList.contains('hidden')) {
+            closeAllDropdowns();
+        } else {
+            openDropdown(slot);
+        }
+        return;
+    }
+
+    // Close dropdowns when clicking outside
+    if (!e.target.closest('.custom-dropdown')) {
+        closeAllDropdowns();
+    }
+});
+
+// ---- Save build ----
+document.getElementById('btn-save-build').addEventListener('click', async () => {
+    const req = buildCurrentRequest();
+
+    if (!req.cpuId || !req.motherboardId || !req.psuId || !req.caseId || !req.ramIds || req.ramIds.length === 0) {
+        toast('Please select at least CPU, Motherboard, RAM, PSU, and Case.', 'error');
+        return;
+    }
+
+    // Ensure ramIds/storageIds/coolerIds are arrays
+    if (!req.ramIds) req.ramIds = [];
+    if (!req.storageIds) req.storageIds = [];
+    if (!req.coolerIds) req.coolerIds = [];
+
+    try {
+        await apiFetch('/builds', { method: 'POST', body: JSON.stringify(req) });
+        toast('Build saved successfully!');
+    } catch (err) {
+        toast(err.message, 'error');
+    }
+});
+
+// ---- Init ----
+(async function init() {
+    await loadAllComponents();
+})();

@@ -8,195 +8,245 @@
 </head>
 <body>
 
-<!-- Header -->
 <header class="header">
     <div class="header-brand">
-        <span class="logo">&#9881;</span>
-        <h1>RigLab</h1>
+        <a href="/" class="brand-link">
+            <span class="logo">&#9881;</span>
+            <h1>RigLab</h1>
+        </a>
     </div>
     <nav class="nav">
-        <button class="nav-btn active" data-tab="components">Components</button>
-        <button class="nav-btn" data-tab="builds">Builds</button>
+        <a href="/" class="nav-btn active">Build</a>
+        <a href="/components.html" class="nav-btn">Components</a>
     </nav>
 </header>
 
-<!-- Toast container -->
 <div id="toast-container"></div>
 
-<!-- Components Section -->
-<main id="tab-components" class="tab-content active">
-    <div class="toolbar">
-        <div class="toolbar-left">
-            <h2>Components</h2>
-            <select id="filter-type" class="input">
-                <option value="">All Types</option>
-                <option value="CPU">CPU</option>
-                <option value="GPU">GPU</option>
-                <option value="MOTHERBOARD">Motherboard</option>
-                <option value="RAM">RAM</option>
-                <option value="PSU">PSU</option>
-                <option value="CASE">Case</option>
-                <option value="COOLER">Cooler</option>
-                <option value="STORAGE">Storage</option>
-            </select>
-            <input type="text" id="search-name" class="input" placeholder="Search by name...">
-        </div>
-        <button class="btn btn-primary" id="btn-add-component">+ Add Component</button>
+<main class="configurator-main">
+    <div class="config-header">
+        <h2>&#128296; PC Build Configurator</h2>
+        <p class="config-subtitle">Select your components to build the perfect PC. Incompatible parts are shown in red.</p>
     </div>
 
-    <div id="components-list" class="card-grid">
-        <!-- Dynamically populated -->
+    <div class="config-summary-bar">
+        <div class="summary-item">
+            <span class="summary-label">Total Price</span>
+            <span class="summary-value price" id="total-price">$0.00</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-label">Power Draw</span>
+            <span class="summary-value power" id="total-power">0W</span>
+        </div>
+        <div class="summary-actions">
+            <input type="text" id="build-name" class="input" placeholder="Build name..." value="My Build">
+            <button class="btn btn-primary" id="btn-save-build">&#128190; Save Build</button>
+        </div>
+    </div>
+
+    <div class="config-table">
+        <!-- CPU -->
+        <div class="config-row" data-slot="cpu">
+            <div class="config-label">
+                <span class="config-icon" data-type="CPU">CPU</span>
+                <span>Processor</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-cpu">
+                    <button class="dropdown-trigger" data-slot="cpu">
+                        <span class="dropdown-placeholder">Select CPU...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-cpu">&mdash;</div>
+        </div>
+
+        <!-- Motherboard -->
+        <div class="config-row" data-slot="motherboard">
+            <div class="config-label">
+                <span class="config-icon" data-type="MOTHERBOARD">MB</span>
+                <span>Motherboard</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-motherboard">
+                    <button class="dropdown-trigger" data-slot="motherboard">
+                        <span class="dropdown-placeholder">Select Motherboard...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-motherboard">&mdash;</div>
+        </div>
+
+        <!-- GPU -->
+        <div class="config-row" data-slot="gpu">
+            <div class="config-label">
+                <span class="config-icon" data-type="GPU">GPU</span>
+                <span>Graphics Card</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-gpu">
+                    <button class="dropdown-trigger" data-slot="gpu">
+                        <span class="dropdown-placeholder">Select GPU (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-gpu">&mdash;</div>
+        </div>
+
+        <!-- RAM Slot 1 -->
+        <div class="config-row" data-slot="ram-0">
+            <div class="config-label">
+                <span class="config-icon" data-type="RAM">RAM</span>
+                <span>Memory (Slot 1) <span class="ram-lock-msg" id="ram-lock-msg">&#128274; Select a motherboard first</span></span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-ram-0">
+                    <button class="dropdown-trigger" data-slot="ram-0" disabled>
+                        <span class="dropdown-placeholder">Select motherboard first...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-ram-0">&mdash;</div>
+        </div>
+        <!-- RAM Slot 2 -->
+        <div class="config-row ram-extra hidden" data-slot="ram-1">
+            <div class="config-label">
+                <span class="config-icon" data-type="RAM">RAM</span>
+                <span>Memory (Slot 2)</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-ram-1">
+                    <button class="dropdown-trigger" data-slot="ram-1">
+                        <span class="dropdown-placeholder">Select RAM (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-ram-1">&mdash;</div>
+        </div>
+        <!-- RAM Slot 3 -->
+        <div class="config-row ram-extra hidden" data-slot="ram-2">
+            <div class="config-label">
+                <span class="config-icon" data-type="RAM">RAM</span>
+                <span>Memory (Slot 3)</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-ram-2">
+                    <button class="dropdown-trigger" data-slot="ram-2">
+                        <span class="dropdown-placeholder">Select RAM (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-ram-2">&mdash;</div>
+        </div>
+        <!-- RAM Slot 4 -->
+        <div class="config-row ram-extra hidden" data-slot="ram-3">
+            <div class="config-label">
+                <span class="config-icon" data-type="RAM">RAM</span>
+                <span>Memory (Slot 4)</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-ram-3">
+                    <button class="dropdown-trigger" data-slot="ram-3">
+                        <span class="dropdown-placeholder">Select RAM (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-ram-3">&mdash;</div>
+        </div>
+
+        <!-- Storage 1 -->
+        <div class="config-row" data-slot="storage-0">
+            <div class="config-label">
+                <span class="config-icon" data-type="STORAGE">SSD</span>
+                <span>Storage (Primary)</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-storage-0">
+                    <button class="dropdown-trigger" data-slot="storage-0">
+                        <span class="dropdown-placeholder">Select Storage (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-storage-0">&mdash;</div>
+        </div>
+
+        <!-- Storage 2 -->
+        <div class="config-row" data-slot="storage-1">
+            <div class="config-label">
+                <span class="config-icon" data-type="STORAGE">HDD</span>
+                <span>Storage (Secondary)</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-storage-1">
+                    <button class="dropdown-trigger" data-slot="storage-1">
+                        <span class="dropdown-placeholder">Select Storage (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-storage-1">&mdash;</div>
+        </div>
+
+        <!-- PSU -->
+        <div class="config-row" data-slot="psu">
+            <div class="config-label">
+                <span class="config-icon" data-type="PSU">PSU</span>
+                <span>Power Supply</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-psu">
+                    <button class="dropdown-trigger" data-slot="psu">
+                        <span class="dropdown-placeholder">Select PSU...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-psu">&mdash;</div>
+        </div>
+
+        <!-- Case -->
+        <div class="config-row" data-slot="case">
+            <div class="config-label">
+                <span class="config-icon" data-type="CASE">CASE</span>
+                <span>Case</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-case">
+                    <button class="dropdown-trigger" data-slot="case">
+                        <span class="dropdown-placeholder">Select Case...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-case">&mdash;</div>
+        </div>
+
+        <!-- Cooler -->
+        <div class="config-row" data-slot="cooler">
+            <div class="config-label">
+                <span class="config-icon" data-type="COOLER">FAN</span>
+                <span>CPU Cooler</span>
+            </div>
+            <div class="config-selector">
+                <div class="custom-dropdown" id="dropdown-cooler">
+                    <button class="dropdown-trigger" data-slot="cooler">
+                        <span class="dropdown-placeholder">Select Cooler (optional)...</span>
+                    </button>
+                    <div class="dropdown-panel hidden"></div>
+                </div>
+            </div>
+            <div class="config-price" id="price-cooler">&mdash;</div>
+        </div>
     </div>
 </main>
-
-<!-- Builds Section -->
-<main id="tab-builds" class="tab-content">
-    <div class="toolbar">
-        <div class="toolbar-left">
-            <h2>Builds</h2>
-        </div>
-        <button class="btn btn-primary" id="btn-add-build">+ New Build</button>
-    </div>
-
-    <div id="builds-list" class="card-grid">
-        <!-- Dynamically populated -->
-    </div>
-</main>
-
-<!-- Component Modal -->
-<div id="component-modal" class="modal-overlay hidden">
-    <div class="modal">
-        <div class="modal-header">
-            <h3 id="component-modal-title">Add Component</h3>
-            <button class="modal-close" data-close="component-modal">&times;</button>
-        </div>
-        <form id="component-form" class="modal-body">
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="comp-name">Name *</label>
-                    <input type="text" id="comp-name" class="input" required>
-                </div>
-                <div class="form-group">
-                    <label for="comp-brand">Brand *</label>
-                    <input type="text" id="comp-brand" class="input" required>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="comp-type">Type *</label>
-                    <select id="comp-type" class="input" required>
-                        <option value="">Select type</option>
-                        <option value="CPU">CPU</option>
-                        <option value="GPU">GPU</option>
-                        <option value="MOTHERBOARD">Motherboard</option>
-                        <option value="RAM">RAM</option>
-                        <option value="PSU">PSU</option>
-                        <option value="CASE">Case</option>
-                        <option value="COOLER">Cooler</option>
-                        <option value="STORAGE">Storage</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="comp-price">Price ($)</label>
-                    <input type="number" id="comp-price" class="input" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="comp-power">Power (W)</label>
-                    <input type="number" id="comp-power" class="input" min="0">
-                </div>
-            </div>
-
-            <!-- Dynamic detail fields -->
-            <div id="detail-fields"></div>
-
-            <input type="hidden" id="comp-edit-id">
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-close="component-modal">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="comp-submit-btn">Save</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Build Modal -->
-<div id="build-modal" class="modal-overlay hidden">
-    <div class="modal modal-wide">
-        <div class="modal-header">
-            <h3 id="build-modal-title">New Build</h3>
-            <button class="modal-close" data-close="build-modal">&times;</button>
-        </div>
-        <form id="build-form" class="modal-body">
-            <div class="form-group">
-                <label for="build-name">Build Name *</label>
-                <input type="text" id="build-name" class="input" required>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="build-cpu">CPU *</label>
-                    <select id="build-cpu" class="input" required></select>
-                </div>
-                <div class="form-group">
-                    <label for="build-gpu">GPU</label>
-                    <select id="build-gpu" class="input"></select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="build-motherboard">Motherboard *</label>
-                    <select id="build-motherboard" class="input" required></select>
-                </div>
-                <div class="form-group">
-                    <label for="build-psu">PSU *</label>
-                    <select id="build-psu" class="input" required></select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="build-case">Case *</label>
-                    <select id="build-case" class="input" required></select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>RAM * <small>(hold Ctrl to select multiple)</small></label>
-                <select id="build-ram" class="input" multiple required></select>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Storage <small>(hold Ctrl to select multiple)</small></label>
-                    <select id="build-storage" class="input" multiple></select>
-                </div>
-                <div class="form-group">
-                    <label>Coolers <small>(hold Ctrl to select multiple)</small></label>
-                    <select id="build-cooler" class="input" multiple></select>
-                </div>
-            </div>
-
-            <input type="hidden" id="build-edit-id">
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-close="build-modal">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="build-submit-btn">Create Build</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Build Detail Modal -->
-<div id="build-detail-modal" class="modal-overlay hidden">
-    <div class="modal modal-wide">
-        <div class="modal-header">
-            <h3 id="build-detail-title">Build Details</h3>
-            <button class="modal-close" data-close="build-detail-modal">&times;</button>
-        </div>
-        <div id="build-detail-body" class="modal-body">
-            <!-- Dynamically populated -->
-        </div>
-    </div>
-</div>
 
 <script src="app.js"></script>
 </body>
