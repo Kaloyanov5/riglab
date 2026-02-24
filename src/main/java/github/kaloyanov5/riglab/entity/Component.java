@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,8 +30,10 @@ public class Component {
     @Positive
     private Double price;
 
-    @Positive
+    @PositiveOrZero
     private Integer powerConsumption; // watts
+
+    private String imageUrl;
 
     @OneToOne(mappedBy = "component", cascade = CascadeType.ALL, orphanRemoval = true)
     private CpuDetails cpuDetails;
