@@ -39,6 +39,10 @@ function esc(str) {
 let currentType = '';
 let currentPage = 0;
 let currentSearch = '';
+let currentSortBy = 'name';
+let currentSortDir = 'asc';
+let currentMinPrice = null;
+let currentMaxPrice = null;
 const PAGE_SIZE = 12;
 
 // ---- Modal helpers ----
@@ -61,11 +65,13 @@ async function loadComponents() {
         const params = new URLSearchParams({
             page: currentPage,
             size: PAGE_SIZE,
-            sortBy: 'name',
-            sortDir: 'asc',
+            sortBy: currentSortBy,
+            sortDir: currentSortDir,
         });
         if (currentType) params.set('type', currentType);
         if (currentSearch) params.set('name', currentSearch);
+        if (currentMinPrice != null && currentMinPrice !== '') params.set('minPrice', currentMinPrice);
+        if (currentMaxPrice != null && currentMaxPrice !== '') params.set('maxPrice', currentMaxPrice);
 
         const data = await apiFetch(`/components/paged?${params}`);
         renderComponents(data.content);
@@ -438,7 +444,7 @@ document.getElementById('component-form').addEventListener('submit', async (e) =
         brand: document.getElementById('comp-brand').value,
         type: type,
         price: parseFloat(document.getElementById('comp-price').value) || null,
-        powerConsumption: parseInt(document.getElementById('comp-power').value) || null,
+        powerConsumption: document.getElementById('comp-power').value !== '' ? parseInt(document.getElementById('comp-power').value) : null,
         imageUrl: document.getElementById('comp-image').value || null,
     };
 
@@ -466,8 +472,52 @@ document.getElementById('component-form').addEventListener('submit', async (e) =
     }
 });
 
+// ---- Sort controls ----
+function updateSortButtons() {
+    document.querySelectorAll('.components-toolbar .sort-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === currentSortBy && btn.dataset.dir === currentSortDir);
+    });
+}
+
+document.querySelectorAll('.components-toolbar .sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentSortBy = btn.dataset.sort;
+        currentSortDir = btn.dataset.dir;
+        currentPage = 0;
+        updateSortButtons();
+        loadComponents();
+    });
+});
+
+// ---- Price range filter ----
+let priceFilterTimeout;
+document.getElementById('price-min').addEventListener('input', (e) => {
+    clearTimeout(priceFilterTimeout);
+    priceFilterTimeout = setTimeout(() => {
+        const val = e.target.value;
+        currentMinPrice = val !== '' ? parseFloat(val) : null;
+        currentPage = 0;
+        loadComponents();
+    }, 400);
+});
+
+document.getElementById('price-max').addEventListener('input', (e) => {
+    clearTimeout(priceFilterTimeout);
+    priceFilterTimeout = setTimeout(() => {
+        const val = e.target.value;
+        currentMaxPrice = val !== '' ? parseFloat(val) : null;
+        currentPage = 0;
+        loadComponents();
+    }, 400);
+});
+
 // ---- Init ----
+updateSortButtons();
 loadComponents();
+
+
+
+
 
 
 

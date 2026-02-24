@@ -36,18 +36,20 @@ public class ComponentController {
     }
 
     @GetMapping("/paged")
-    @Operation(summary = "Get components (paginated)", description = "Retrieve components with pagination, optional type filter and name search")
+    @Operation(summary = "Get components (paginated)", description = "Retrieve components with pagination, optional type filter, name search, and price range")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved components page")
     public ResponseEntity<Page<ComponentResponse>> getComponentsPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
             @RequestParam(required = false) ComponentType type,
             @RequestParam(required = false) String name,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         PageRequest pageable = PageRequest.of(page, size, sort);
-        return ResponseEntity.ok(componentService.searchComponentsPaged(name, type, pageable));
+        return ResponseEntity.ok(componentService.searchComponentsPaged(name, type, minPrice, maxPrice, pageable));
     }
 
     @GetMapping("/{id}")
@@ -112,3 +114,4 @@ public class ComponentController {
         return ResponseEntity.noContent().build();
     }
 }
+

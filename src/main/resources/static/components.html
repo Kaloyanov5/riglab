@@ -54,13 +54,32 @@
             <h4>Search</h4>
             <input type="text" id="search-name" class="input filter-input" placeholder="Search by name...">
         </div>
+
+        <div class="filter-section">
+            <h4>Price Range</h4>
+            <div class="price-range-filter">
+                <div class="price-range-inputs">
+                    <input type="number" id="price-min" class="input filter-input price-range-input" placeholder="Min $" min="0" step="1">
+                    <span class="price-range-sep">&ndash;</span>
+                    <input type="number" id="price-max" class="input filter-input price-range-input" placeholder="Max $" min="0" step="1">
+                </div>
+            </div>
+        </div>
     </aside>
 
     <!-- Main content -->
     <main class="components-main">
         <div class="components-toolbar">
             <h2 id="components-title">All Components</h2>
-            <button class="btn btn-primary" id="btn-add-component">+ Add Component</button>
+            <div class="toolbar-right">
+                <div class="sort-controls">
+                    <span class="sort-label">Sort by:</span>
+                    <button class="sort-btn" id="sort-name-asc" data-sort="name" data-dir="asc" title="Name A-Z">Name ↑</button>
+                    <button class="sort-btn" id="sort-price-asc" data-sort="price" data-dir="asc" title="Price: Low to High">Price ↑</button>
+                    <button class="sort-btn" id="sort-price-desc" data-sort="price" data-dir="desc" title="Price: High to Low">Price ↓</button>
+                </div>
+                <button class="btn btn-primary" id="btn-add-component">+ Add Component</button>
+            </div>
         </div>
 
         <div id="components-list" class="card-grid">
@@ -136,4 +155,5 @@
 <script src="components.js"></script>
 </body>
 </html>
+
 

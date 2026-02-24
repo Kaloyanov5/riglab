@@ -25,4 +25,13 @@ public interface ComponentRepository extends JpaRepository<Component, Long> {
     Page<Component> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     Page<Component> findByTypeAndNameContainingIgnoreCase(ComponentType type, String name, Pageable pageable);
+
+    // Price range queries
+    Page<Component> findByPriceBetween(Double minPrice, Double maxPrice, Pageable pageable);
+
+    Page<Component> findByTypeAndPriceBetween(ComponentType type, Double minPrice, Double maxPrice, Pageable pageable);
+
+    Page<Component> findByNameContainingIgnoreCaseAndPriceBetween(String name, Double minPrice, Double maxPrice, Pageable pageable);
+
+    Page<Component> findByTypeAndNameContainingIgnoreCaseAndPriceBetween(ComponentType type, String name, Double minPrice, Double maxPrice, Pageable pageable);
 }

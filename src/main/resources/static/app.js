@@ -182,20 +182,60 @@ function getComponentMeta(comp) {
     return parts.join(' · ');
 }
 
-function renderDropdownOptions(panel, components, slot) {
-    let html = `<div class="dropdown-search"><input type="text" placeholder="Search..." data-slot="${slot}"></div>`;
+// ---- Per-dropdown filter/sort state ----
+const dropdownFilters = {};
 
-    if (components.length === 0) {
-        html += '<div class="dropdown-none">No components available</div>';
+function getFilter(slot) {
+    if (!dropdownFilters[slot]) {
+        dropdownFilters[slot] = { sort: 'asc', search: '' };
+    }
+    return dropdownFilters[slot];
+}
+
+function renderDropdownOptions(panel, components, slot) {
+    const filter = getFilter(slot);
+
+    // Toolbar HTML (search + sort only)
+    let html = `<div class="dropdown-toolbar">
+        <div class="dropdown-search-row">
+            <input type="text" class="dropdown-search-input" placeholder="Search..." data-slot="${slot}" value="${esc(filter.search)}">
+            <div class="dropdown-sort-btns">
+                <button class="sort-btn ${filter.sort === 'asc' ? 'active' : ''}" data-sort="asc" data-slot="${slot}" title="Price: Low to High">$ ↑</button>
+                <button class="sort-btn ${filter.sort === 'desc' ? 'active' : ''}" data-sort="desc" data-slot="${slot}" title="Price: High to Low">$ ↓</button>
+            </div>
+        </div>
+    </div>`;
+
+    // Filter and sort
+    let filtered = [...components];
+
+    if (filter.search) {
+        const q = filter.search.toLowerCase();
+        filtered = filtered.filter(c => {
+            const name = c.name.toLowerCase();
+            const meta = getComponentMeta(c).toLowerCase();
+            return name.includes(q) || meta.includes(q);
+        });
+    }
+
+    filtered.sort((a, b) => {
+        const pa = a.price ?? 0, pb = b.price ?? 0;
+        return filter.sort === 'asc' ? pa - pb : pb - pa;
+    });
+
+    // Options HTML
+    html += '<div class="dropdown-options-list">';
+    if (filtered.length === 0) {
+        html += '<div class="dropdown-none">No components match filters</div>';
     } else {
-        for (const c of components) {
+        for (const c of filtered) {
             const isIncompat = incompatibleIds.has(c.id);
             const cls = isIncompat ? 'dropdown-option incompatible' : 'dropdown-option';
             const imgHtml = c.imageUrl
                 ? `<img class="opt-img" src="${esc(c.imageUrl)}" alt="" onerror="this.outerHTML='<div class=\\'opt-img-placeholder\\'>&#128187;</div>'">`
                 : '<div class="opt-img-placeholder">&#128187;</div>';
 
-            html += `<div class="${cls}" data-id="${c.id}" data-slot="${slot}" ${isIncompat ? '' : ''}>
+            html += `<div class="${cls}" data-id="${c.id}" data-slot="${slot}">
                 ${imgHtml}
                 <div class="opt-info">
                     <div class="opt-name">${esc(c.name)}</div>
@@ -206,31 +246,46 @@ function renderDropdownOptions(panel, components, slot) {
             </div>`;
         }
     }
+    html += '</div>';
 
     panel.innerHTML = html;
 
-    // Search within dropdown
-    const searchInput = panel.querySelector('.dropdown-search input');
+    // ---- Wire up toolbar events ----
+
+    // Search
+    const searchInput = panel.querySelector('.dropdown-search-input');
     if (searchInput) {
         searchInput.addEventListener('input', () => {
-            const q = searchInput.value.toLowerCase();
-            panel.querySelectorAll('.dropdown-option').forEach(opt => {
-                const name = opt.querySelector('.opt-name').textContent.toLowerCase();
-                const meta = opt.querySelector('.opt-meta').textContent.toLowerCase();
-                opt.style.display = (name.includes(q) || meta.includes(q)) ? '' : 'none';
-            });
+            filter.search = searchInput.value;
+            reRenderOptions(panel, components, slot);
         });
         setTimeout(() => searchInput.focus(), 50);
     }
 
-    // Click handlers
+    // Sort buttons
+    panel.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filter.sort = btn.dataset.sort;
+            reRenderOptions(panel, components, slot);
+        });
+    });
+
+    // Click handlers on options
+    bindOptionClicks(panel, slot);
+}
+
+function reRenderOptions(panel, components, slot) {
+    renderDropdownOptions(panel, components, slot);
+}
+
+function bindOptionClicks(panel, slot) {
     panel.querySelectorAll('.dropdown-option:not(.incompatible)').forEach(opt => {
         opt.addEventListener('click', () => {
             const compId = parseInt(opt.dataset.id);
-            const compSlot = opt.dataset.slot;
-            const type = slotToType(compSlot);
+            const type = slotToType(slot);
             const comp = (componentsByType[type] || []).find(c => c.id === compId);
-            if (comp) selectComponent(compSlot, comp);
+            if (comp) selectComponent(slot, comp);
         });
     });
 }
@@ -408,7 +463,7 @@ async function openDropdown(slot) {
     if (trigger) {
         const triggerRect = trigger.getBoundingClientRect();
         const spaceBelow = window.innerHeight - triggerRect.bottom;
-        const panelHeight = Math.min(panel.scrollHeight, 320);
+        const panelHeight = Math.min(panel.scrollHeight, 400);
         if (spaceBelow < panelHeight + 20 && triggerRect.top > panelHeight) {
             panel.classList.add('drop-up');
         }

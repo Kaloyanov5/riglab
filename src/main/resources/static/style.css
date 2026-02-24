@@ -264,12 +264,42 @@ select.input { cursor: pointer; }
     position: absolute; top: calc(100% + 4px); left: 0; right: 0;
     background: var(--bg-modal); border: 1px solid var(--border);
     border-radius: 10px; box-shadow: var(--shadow);
-    z-index: 200; max-height: 320px; overflow-y: auto;
+    z-index: 200; max-height: 400px; display: flex; flex-direction: column;
+    overflow: hidden;
 }
 .dropdown-panel.drop-up {
     top: auto; bottom: calc(100% + 4px);
 }
 .dropdown-panel.hidden { display: none; }
+
+/* Dropdown toolbar: search + sort + price filter */
+.dropdown-toolbar {
+    position: sticky; top: 0; background: var(--bg-modal); z-index: 1;
+    border-bottom: 1px solid var(--border); padding: 10px 12px 8px;
+}
+.dropdown-search-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.dropdown-search-input {
+    flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--bg-input); color: var(--text);
+    font-size: 13px; outline: none;
+}
+.dropdown-search-input:focus { border-color: var(--primary); }
+
+.dropdown-sort-btns { display: flex; gap: 2px; flex-shrink: 0; }
+.sort-btn {
+    padding: 4px 8px; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg-input); color: var(--text-muted);
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+}
+.sort-btn:hover { border-color: var(--primary); color: var(--text); }
+.sort-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.dropdown-options-list {
+    overflow-y: auto; flex: 1; min-height: 0;
+}
 
 .dropdown-search {
     padding: 10px 12px; border-bottom: 1px solid var(--border);
@@ -364,6 +394,21 @@ select.input { cursor: pointer; }
     margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
 }
 .components-toolbar h2 { font-size: 20px; font-weight: 600; }
+.toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sort-controls { display: flex; align-items: center; gap: 4px; }
+.sort-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-right: 2px; }
+
+/* Price range filter (sidebar) */
+.price-range-filter { margin-top: 4px; }
+.price-range-inputs {
+    display: flex; align-items: center; gap: 6px;
+}
+.price-range-input {
+    width: 100%; padding: 6px 10px !important; font-size: 13px !important;
+}
+.price-range-sep {
+    color: var(--text-muted); font-size: 14px; flex-shrink: 0;
+}
 
 /* Card grid */
 .card-grid {

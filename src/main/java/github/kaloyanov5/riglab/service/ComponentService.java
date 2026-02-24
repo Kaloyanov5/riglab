@@ -57,14 +57,33 @@ public class ComponentService {
                 .toList();
     }
 
-    public Page<ComponentResponse> searchComponentsPaged(String name, ComponentType type, Pageable pageable) {
-        if (type != null && name != null && !name.isBlank()) {
+    public Page<ComponentResponse> searchComponentsPaged(String name, ComponentType type, Double minPrice, Double maxPrice, Pageable pageable) {
+        boolean hasName = name != null && !name.isBlank();
+        boolean hasType = type != null;
+        boolean hasPrice = minPrice != null || maxPrice != null;
+
+        double pMin = minPrice != null ? minPrice : 0.0;
+        double pMax = maxPrice != null ? maxPrice : Double.MAX_VALUE;
+
+        if (hasType && hasName && hasPrice) {
+            return componentRepository.findByTypeAndNameContainingIgnoreCaseAndPriceBetween(type, name, pMin, pMax, pageable)
+                    .map(ComponentResponse::fromEntity);
+        } else if (hasType && hasName) {
             return componentRepository.findByTypeAndNameContainingIgnoreCase(type, name, pageable)
                     .map(ComponentResponse::fromEntity);
-        } else if (type != null) {
+        } else if (hasType && hasPrice) {
+            return componentRepository.findByTypeAndPriceBetween(type, pMin, pMax, pageable)
+                    .map(ComponentResponse::fromEntity);
+        } else if (hasName && hasPrice) {
+            return componentRepository.findByNameContainingIgnoreCaseAndPriceBetween(name, pMin, pMax, pageable)
+                    .map(ComponentResponse::fromEntity);
+        } else if (hasType) {
             return componentRepository.findByType(type, pageable).map(ComponentResponse::fromEntity);
-        } else if (name != null && !name.isBlank()) {
+        } else if (hasName) {
             return componentRepository.findByNameContainingIgnoreCase(name, pageable)
+                    .map(ComponentResponse::fromEntity);
+        } else if (hasPrice) {
+            return componentRepository.findByPriceBetween(pMin, pMax, pageable)
                     .map(ComponentResponse::fromEntity);
         }
         return componentRepository.findAll(pageable).map(ComponentResponse::fromEntity);
