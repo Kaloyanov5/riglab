@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RigLab - Component</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-brand">
+        <a href="/" class="brand-link">
+            <span class="logo">&#9881;</span>
+            <h1>RigLab</h1>
+        </a>
+    </div>
+    <nav class="nav">
+        <a href="/" class="nav-btn">Build</a>
+        <a href="/components.html" class="nav-btn active">Components</a>
+    </nav>
+</header>
+
+<div id="toast-container"></div>
+
+<main class="product-page">
+    <div class="product-back">
+        <a href="/components.html" class="btn btn-secondary btn-sm">&larr; Back to Components</a>
+    </div>
+
+    <div id="product-loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading component...</p>
+    </div>
+
+    <div id="product-error" class="empty-state hidden">
+        <div class="empty-icon">&#9888;</div>
+        <p id="product-error-msg">Component not found.</p>
+    </div>
+
+    <div id="product-content" class="hidden">
+        <div class="product-hero">
+            <div class="product-image-wrap">
+                <img id="product-img" class="product-image" src="" alt="">
+                <div id="product-img-placeholder" class="product-image-placeholder hidden">&#128187;</div>
+            </div>
+            <div class="product-info">
+                <div class="product-type-badge">
+                    <span id="product-type" class="card-type" data-type=""></span>
+                </div>
+                <h1 id="product-name" class="product-title"></h1>
+                <p id="product-brand" class="product-brand"></p>
+                <div class="product-meta">
+                    <span id="product-price" class="product-price"></span>
+                </div>
+                <div class="product-actions">
+                    <button class="btn btn-secondary" id="btn-product-edit">Edit</button>
+                    <button class="btn btn-danger" id="btn-product-delete">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="product-specs-section" class="product-specs-section hidden">
+            <h2>Specifications</h2>
+            <table class="specs-table">
+                <tbody id="specs-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="component.js"></script>
+</body>
+</html>
+
+

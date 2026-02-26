@@ -136,7 +136,7 @@ function renderComponents(components) {
     }
 
     list.innerHTML = components.map(c => `
-        <div class="card">
+        <div class="card" onclick="viewComponent(${c.id})" style="cursor:pointer;">
             ${c.imageUrl
                 ? `<img class="card-img" src="${esc(c.imageUrl)}" alt="${esc(c.name)}" onerror="this.outerHTML='<div class=\\'card-img-placeholder\\'>&#128187;</div>'">`
                 : '<div class="card-img-placeholder">&#128187;</div>'
@@ -156,8 +156,8 @@ function renderComponents(components) {
                         ${c.powerConsumption ? `<span class="card-power">&nbsp;&bull; ${c.powerConsumption}W</span>` : ''}
                     </div>
                     <div class="card-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="editComponent(${c.id})">Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteComponent(${c.id})">Delete</button>
+                        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editComponent(${c.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteComponent(${c.id})">Delete</button>
                     </div>
                 </div>
             </div>
@@ -575,6 +575,23 @@ document.getElementById('price-max').addEventListener('input', (e) => {
 // ---- Init ----
 updateSortButtons();
 loadComponents();
+
+// Handle #edit-{id} hash from component detail page
+(function handleEditHash() {
+    const hash = window.location.hash;
+    if (hash.startsWith('#edit-')) {
+        const id = hash.replace('#edit-', '');
+        if (id) {
+            window.location.hash = '';
+            setTimeout(() => editComponent(parseInt(id)), 500);
+        }
+    }
+})();
+
+// ---- Navigate to component detail page ----
+window.viewComponent = function(id) {
+    window.location.href = `/component.html?id=${id}`;
+};
 
 
 
