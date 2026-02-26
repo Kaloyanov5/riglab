@@ -43,6 +43,8 @@ let currentSortBy = 'name';
 let currentSortDir = 'asc';
 let currentMinPrice = null;
 let currentMaxPrice = null;
+let currentDetailFilters = {};
+let loadedPageComponents = [];
 const PAGE_SIZE = 12;
 
 // ---- Modal helpers ----
@@ -62,9 +64,12 @@ async function loadComponents() {
     list.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading components...</p></div>';
 
     try {
+        const hasDetailFilters = Object.keys(currentDetailFilters).length > 0;
+        const fetchSize = hasDetailFilters ? 200 : PAGE_SIZE;
+
         const params = new URLSearchParams({
-            page: currentPage,
-            size: PAGE_SIZE,
+            page: hasDetailFilters ? 0 : currentPage,
+            size: fetchSize,
             sortBy: currentSortBy,
             sortDir: currentSortDir,
         });
@@ -74,11 +79,49 @@ async function loadComponents() {
         if (currentMaxPrice != null && currentMaxPrice !== '') params.set('maxPrice', currentMaxPrice);
 
         const data = await apiFetch(`/components/paged?${params}`);
-        renderComponents(data.content);
-        renderPagination(data);
+        loadedPageComponents = data.content || [];
+
+        const filtered = applyDetailFilters(loadedPageComponents);
+        renderComponents(filtered);
+
+        if (hasDetailFilters) {
+            document.getElementById('pagination').innerHTML =
+                `<span class="page-info">${filtered.length} result(s) found</span>`;
+        } else {
+            renderPagination(data);
+        }
     } catch (err) {
         list.innerHTML = `<div class="empty-state"><p>Error loading components: ${err.message}</p></div>`;
     }
+}
+
+/**
+ * Client-side filtering by component spec details.
+ * Text: case-insensitive substring match on details[key] or top-level brand.
+ * Number: component value must be >= filter value (minimum threshold).
+ */
+function applyDetailFilters(components) {
+    const activeFilters = Object.entries(currentDetailFilters).filter(([, v]) => v !== '' && v != null);
+    if (activeFilters.length === 0) return components;
+
+    return components.filter(c => {
+        return activeFilters.every(([key, filterVal]) => {
+            // 'brand' is top-level, not in details
+            if (key === 'brand') {
+                return c.brand && c.brand.toLowerCase().includes(String(filterVal).toLowerCase());
+            }
+            if (!c.details) return false;
+            const detailVal = c.details[key];
+            if (detailVal == null) return false;
+
+            // Number filter: treat as minimum threshold
+            if (typeof filterVal === 'number') {
+                return Number(detailVal) >= filterVal;
+            }
+            // Text filter: case-insensitive substring
+            return String(detailVal).toLowerCase().includes(String(filterVal).toLowerCase());
+        });
+    });
 }
 
 function renderComponents(components) {
@@ -207,6 +250,8 @@ function showDetailFilters(type) {
     categories.classList.add('hidden');
     details.classList.remove('hidden');
 
+    currentDetailFilters = {};
+
     const container = document.getElementById('detail-filter-fields');
     const fields = getFilterFieldsForType(type);
 
@@ -219,8 +264,23 @@ function showDetailFilters(type) {
             </div>
         `).join('');
 
-    // Note: detail-level filtering is client-side on the current page
-    // For a production app you'd add server-side query params
+    // Attach listeners to detail filter inputs
+    container.querySelectorAll('[data-filter-key]').forEach(input => {
+        let timeout;
+        input.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const key = input.dataset.filterKey;
+                const val = input.value.trim();
+                if (val === '') {
+                    delete currentDetailFilters[key];
+                } else {
+                    currentDetailFilters[key] = input.type === 'number' ? Number(val) : val;
+                }
+                loadComponents();
+            }, 300);
+        });
+    });
 }
 
 function hideDetailFilters() {
@@ -228,6 +288,7 @@ function hideDetailFilters() {
     const details = document.getElementById('filter-details');
     categories.classList.remove('hidden');
     details.classList.add('hidden');
+    currentDetailFilters = {};
 }
 
 document.getElementById('btn-filter-back').addEventListener('click', () => {
