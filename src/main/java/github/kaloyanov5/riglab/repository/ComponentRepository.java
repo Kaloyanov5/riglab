@@ -7,10 +7,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+
 import java.util.List;
 
 @Repository
 public interface ComponentRepository extends JpaRepository<Component, Long> {
+
+    @Query("SELECT DISTINCT c.brand FROM Component c WHERE c.type = :type ORDER BY c.brand")
+    List<String> findDistinctBrandsByType(ComponentType type);
+
+    @Query("SELECT DISTINCT c.brand FROM Component c ORDER BY c.brand")
+    List<String> findDistinctBrands();
 
     List<Component> findByType(ComponentType type);
 

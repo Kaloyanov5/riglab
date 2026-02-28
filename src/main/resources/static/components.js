@@ -97,8 +97,9 @@ async function loadComponents() {
 
 /**
  * Client-side filtering by component spec details.
- * Text: case-insensitive substring match on details[key] or top-level brand.
- * Number: component value must be >= filter value (minimum threshold).
+ * Brand: top-level exact match (case-insensitive).
+ * Select text fields: exact match (case-insensitive) on details[key].
+ * Number fields: component value must be >= filter value (minimum threshold).
  */
 function applyDetailFilters(components) {
     const activeFilters = Object.entries(currentDetailFilters).filter(([, v]) => v !== '' && v != null);
@@ -108,18 +109,22 @@ function applyDetailFilters(components) {
         return activeFilters.every(([key, filterVal]) => {
             // 'brand' is top-level, not in details
             if (key === 'brand') {
-                return c.brand && c.brand.toLowerCase().includes(String(filterVal).toLowerCase());
+                return c.brand && c.brand.toLowerCase() === String(filterVal).toLowerCase();
             }
             if (!c.details) return false;
             const detailVal = c.details[key];
             if (detailVal == null) return false;
 
-            // Number filter: treat as minimum threshold
+            // Number filter: treat as minimum threshold (>=)
             if (typeof filterVal === 'number') {
                 return Number(detailVal) >= filterVal;
             }
-            // Text filter: case-insensitive substring
-            return String(detailVal).toLowerCase().includes(String(filterVal).toLowerCase());
+            // For numeric string values from select (like VRAM "8"), do >= comparison
+            if (!isNaN(filterVal) && !isNaN(detailVal)) {
+                return Number(detailVal) >= Number(filterVal);
+            }
+            // Text select filter: case-insensitive exact match
+            return String(detailVal).toLowerCase() === String(filterVal).toLowerCase();
         });
     });
 }
@@ -244,7 +249,7 @@ document.querySelectorAll('.filter-cat-btn').forEach(btn => {
 });
 
 // ---- Detail filters (nested level 2) ----
-function showDetailFilters(type) {
+async function showDetailFilters(type) {
     const categories = document.getElementById('filter-categories');
     const details = document.getElementById('filter-details');
     categories.classList.add('hidden');
@@ -255,30 +260,100 @@ function showDetailFilters(type) {
     const container = document.getElementById('detail-filter-fields');
     const fields = getFilterFieldsForType(type);
 
-    container.innerHTML = `<h4>${type} Filters</h4>` +
-        fields.map(f => `
-            <div class="detail-filter-group">
-                <label>${f.label}</label>
-                <input type="${f.inputType}" class="input filter-input" data-filter-key="${f.key}"
-                    placeholder="${f.placeholder || ''}" ${f.step ? `step="${f.step}"` : ''}>
-            </div>
-        `).join('');
+    // Fetch dynamic brands for this type
+    let brands = [];
+    try {
+        brands = await apiFetch(`/components/brands?type=${type}`);
+    } catch (e) { /* ignore */ }
 
-    // Attach listeners to detail filter inputs
-    container.querySelectorAll('[data-filter-key]').forEach(input => {
-        let timeout;
-        input.addEventListener('input', () => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                const key = input.dataset.filterKey;
-                const val = input.value.trim();
-                if (val === '') {
+    container.innerHTML = `<h4>${type} Filters</h4>` +
+        fields.map(f => {
+            if (f.fieldType === 'select') {
+                const options = f.dynamic === 'brand' ? brands : (f.options || []);
+                return `
+                    <div class="detail-filter-group">
+                        <label>${f.label}</label>
+                        <select class="input filter-input" data-filter-key="${f.key}">
+                            <option value="">All</option>
+                            ${options.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+                        </select>
+                    </div>`;
+            } else if (f.fieldType === 'range') {
+                return `
+                    <div class="detail-filter-group">
+                        <label>${f.label}</label>
+                        <div class="slider-filter">
+                            <input type="range" class="filter-slider" data-filter-key="${f.key}"
+                                min="${f.min}" max="${f.max}" step="${f.step}" value="${f.min}"
+                                data-unit="${f.unit || ''}">
+                            <div class="slider-info">
+                                <span class="slider-value" id="slider-val-${f.key}">Any</span>
+                                <button type="button" class="slider-reset" data-reset-key="${f.key}" title="Reset">&times;</button>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                return `
+                    <div class="detail-filter-group">
+                        <label>${f.label}</label>
+                        <input type="number" class="input filter-input" data-filter-key="${f.key}"
+                            placeholder="${f.placeholder || ''}" ${f.step ? `step="${f.step}"` : ''}>
+                    </div>`;
+            }
+        }).join('');
+
+    // Attach listeners
+    container.querySelectorAll('[data-filter-key]').forEach(el => {
+        if (el.type === 'range') {
+            const key = el.dataset.filterKey;
+            const unit = el.dataset.unit || '';
+            const minVal = Number(el.min);
+            const valDisplay = document.getElementById(`slider-val-${key}`);
+
+            el.addEventListener('input', () => {
+                const val = Number(el.value);
+                if (val <= minVal) {
+                    valDisplay.textContent = 'Any';
                     delete currentDetailFilters[key];
                 } else {
-                    currentDetailFilters[key] = input.type === 'number' ? Number(val) : val;
+                    valDisplay.textContent = val + unit + '+';
+                    currentDetailFilters[key] = val;
                 }
+            });
+
+            el.addEventListener('change', () => {
                 loadComponents();
-            }, 300);
+            });
+        } else {
+            let timeout;
+            const eventName = el.tagName === 'SELECT' ? 'change' : 'input';
+            el.addEventListener(eventName, () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    const key = el.dataset.filterKey;
+                    const val = el.value.trim();
+                    if (val === '') {
+                        delete currentDetailFilters[key];
+                    } else {
+                        currentDetailFilters[key] = el.type === 'number' ? Number(val) : val;
+                    }
+                    loadComponents();
+                }, eventName === 'change' ? 0 : 300);
+            });
+        }
+    });
+
+    // Reset buttons for sliders
+    container.querySelectorAll('[data-reset-key]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.resetKey;
+            const slider = container.querySelector(`[data-filter-key="${key}"][type="range"]`);
+            if (slider) {
+                slider.value = slider.min;
+                document.getElementById(`slider-val-${key}`).textContent = 'Any';
+                delete currentDetailFilters[key];
+                loadComponents();
+            }
         });
     });
 }
@@ -303,43 +378,57 @@ document.getElementById('btn-filter-back').addEventListener('click', () => {
 });
 
 function getFilterFieldsForType(type) {
+    const SOCKETS = ['AM4', 'AM5', 'LGA1200', 'LGA1700', 'LGA1851'];
+    const FORM_FACTORS = ['ATX', 'Micro-ATX', 'Mini-ITX', 'E-ATX'];
+    const RAM_TYPES = ['DDR4', 'DDR5'];
+    const STORAGE_TYPES = ['HDD', 'SSD', 'NVMe'];
+    const STORAGE_INTERFACES = ['SATA', 'M.2', 'PCIe'];
+    const COOLER_TYPES = ['Air', 'AIO Liquid', 'Custom Loop'];
+    const PSU_RATINGS = ['80+ Bronze', '80+ Silver', '80+ Gold', '80+ Platinum', '80+ Titanium'];
+    const VRAM_SIZES = ['4', '6', '8', '10', '12', '16', '24'];
+    const RAM_CAPACITIES = ['4', '8', '16', '32', '64'];
+
     switch (type) {
         case 'CPU': return [
-            { key: 'socket', label: 'Socket', inputType: 'text', placeholder: 'e.g. AM5' },
-            { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. AMD' },
-            { key: 'cores', label: 'Min Cores', inputType: 'number', placeholder: 'e.g. 8' },
-            { key: 'threads', label: 'Min Threads', inputType: 'number', placeholder: 'e.g. 16' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'socket', label: 'Socket', fieldType: 'select', options: SOCKETS },
+            { key: 'cores', label: 'Min Cores', fieldType: 'range', min: 2, max: 32, step: 2, unit: '' },
+            { key: 'threads', label: 'Min Threads', fieldType: 'range', min: 2, max: 64, step: 2, unit: '' },
         ];
         case 'GPU': return [
-            { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. NVIDIA' },
-            { key: 'vram', label: 'Min VRAM (GB)', inputType: 'number', placeholder: 'e.g. 8' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'vram', label: 'VRAM (GB)', fieldType: 'select', options: VRAM_SIZES },
         ];
         case 'MOTHERBOARD': return [
-            { key: 'socket', label: 'Socket', inputType: 'text', placeholder: 'e.g. AM5' },
-            { key: 'formFactor', label: 'Form Factor', inputType: 'text', placeholder: 'e.g. ATX' },
-            { key: 'supportedRamType', label: 'RAM Type', inputType: 'text', placeholder: 'e.g. DDR5' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'socket', label: 'Socket', fieldType: 'select', options: SOCKETS },
+            { key: 'formFactor', label: 'Form Factor', fieldType: 'select', options: FORM_FACTORS },
+            { key: 'supportedRamType', label: 'RAM Type', fieldType: 'select', options: RAM_TYPES },
         ];
         case 'RAM': return [
-            { key: 'type', label: 'Type', inputType: 'text', placeholder: 'e.g. DDR5' },
-            { key: 'capacityGb', label: 'Min Capacity (GB)', inputType: 'number', placeholder: 'e.g. 16' },
-            { key: 'speedMhz', label: 'Min Speed (MHz)', inputType: 'number', placeholder: 'e.g. 3200' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'type', label: 'Type', fieldType: 'select', options: RAM_TYPES },
+            { key: 'capacityGb', label: 'Capacity (GB)', fieldType: 'select', options: RAM_CAPACITIES },
+            { key: 'speedMhz', label: 'Min Speed', fieldType: 'range', min: 2133, max: 8000, step: 100, unit: ' MHz' },
         ];
         case 'PSU': return [
-            { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. Corsair' },
-            { key: 'wattage', label: 'Min Wattage', inputType: 'number', placeholder: 'e.g. 650' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'wattage', label: 'Min Wattage', fieldType: 'range', min: 300, max: 1600, step: 50, unit: ' W' },
+            { key: 'efficiencyRating', label: 'Efficiency', fieldType: 'select', options: PSU_RATINGS },
         ];
         case 'CASE': return [
-            { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. NZXT' },
-            { key: 'supportedFormFactor', label: 'Form Factor Support', inputType: 'text', placeholder: 'e.g. ATX' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'supportedFormFactor', label: 'Form Factor', fieldType: 'select', options: FORM_FACTORS },
         ];
         case 'STORAGE': return [
-            { key: 'storageType', label: 'Type', inputType: 'text', placeholder: 'e.g. NVMe' },
-            { key: 'interfaceType', label: 'Interface', inputType: 'text', placeholder: 'e.g. M.2' },
-            { key: 'capacityGb', label: 'Min Capacity (GB)', inputType: 'number', placeholder: 'e.g. 500' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'storageType', label: 'Type', fieldType: 'select', options: STORAGE_TYPES },
+            { key: 'interfaceType', label: 'Interface', fieldType: 'select', options: STORAGE_INTERFACES },
+            { key: 'capacityGb', label: 'Min Capacity', fieldType: 'range', min: 120, max: 8000, step: 10, unit: ' GB' },
         ];
         case 'COOLER': return [
-            { key: 'coolerType', label: 'Type', inputType: 'text', placeholder: 'e.g. AIO Liquid' },
-            { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. NZXT' },
+            { key: 'brand', label: 'Brand', fieldType: 'select', dynamic: 'brand' },
+            { key: 'coolerType', label: 'Type', fieldType: 'select', options: COOLER_TYPES },
         ];
         default: return [];
     }

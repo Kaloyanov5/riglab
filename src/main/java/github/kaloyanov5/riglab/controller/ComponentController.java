@@ -52,6 +52,14 @@ public class ComponentController {
         return ResponseEntity.ok(componentService.searchComponentsPaged(name, type, minPrice, maxPrice, pageable));
     }
 
+    @GetMapping("/brands")
+    @Operation(summary = "Get distinct brands", description = "Get all distinct brands, optionally filtered by component type")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved brands")
+    public ResponseEntity<List<String>> getBrands(
+            @RequestParam(required = false) ComponentType type) {
+        return ResponseEntity.ok(componentService.getDistinctBrands(type));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get component by ID", description = "Retrieve a specific component by its ID, including type-specific details")
     @ApiResponses({

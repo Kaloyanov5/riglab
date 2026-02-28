@@ -29,6 +29,13 @@ public class ComponentService {
                 .toList();
     }
 
+    public List<String> getDistinctBrands(ComponentType type) {
+        if (type != null) {
+            return componentRepository.findDistinctBrandsByType(type);
+        }
+        return componentRepository.findDistinctBrands();
+    }
+
     public Page<ComponentResponse> getAllComponentsPaged(Pageable pageable) {
         return componentRepository.findAll(pageable).map(ComponentResponse::fromEntity);
     }
