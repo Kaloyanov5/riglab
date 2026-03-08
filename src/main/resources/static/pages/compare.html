@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RigLab - Compare Components</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-brand">
+        <a href="/" class="brand-link">
+            <span class="logo">&#9881;</span>
+            <h1>RigLab</h1>
+        </a>
+    </div>
+    <nav class="nav">
+        <a href="/" class="nav-btn">Build</a>
+        <a href="/pages/components.html" class="nav-btn">Components</a>
+        <a href="/pages/admin.html" class="nav-btn">Admin</a>
+    </nav>
+</header>
+
+<div id="toast-container"></div>
+
+<main class="compare-page">
+    <div class="product-back">
+        <a href="/pages/components.html" class="btn btn-secondary btn-sm">&larr; Back to Components</a>
+    </div>
+
+    <h2 class="compare-title">&#x2696; Compare Components</h2>
+
+    <div id="compare-loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading component...</p>
+    </div>
+
+    <div id="compare-error" class="empty-state hidden">
+        <div class="empty-icon">&#9888;</div>
+        <p id="compare-error-msg">Component not found.</p>
+    </div>
+
+    <div id="compare-content" class="hidden">
+        <!-- Two-column comparison cards -->
+        <div class="compare-layout">
+            <!-- Component A (pre-selected) -->
+            <div class="compare-card" id="compare-card-a">
+                <div class="compare-card-image">
+                    <img id="compare-img-a" class="compare-img" src="" alt="">
+                    <div id="compare-img-placeholder-a" class="compare-img-placeholder hidden">&#128187;</div>
+                </div>
+                <div class="compare-card-info">
+                    <span id="compare-type-a" class="card-type" data-type=""></span>
+                    <h3 id="compare-name-a"></h3>
+                    <p id="compare-brand-a" class="compare-brand"></p>
+                    <span id="compare-price-a" class="compare-price"></span>
+                </div>
+            </div>
+
+            <div class="compare-vs">VS</div>
+
+            <!-- Component B (user-selected) -->
+            <div class="compare-card" id="compare-card-b">
+                <div class="compare-card-image" id="compare-b-image-wrap">
+                    <div id="compare-img-placeholder-b" class="compare-img-placeholder">&#128187;</div>
+                    <img id="compare-img-b" class="compare-img hidden" src="" alt="">
+                </div>
+                <div class="compare-card-info">
+                    <div id="compare-b-selector">
+                        <label class="compare-select-label">Select a component to compare:</label>
+                        <select id="compare-select-b" class="input compare-select">
+                            <option value="">-- Choose --</option>
+                        </select>
+                    </div>
+                    <div id="compare-b-info" class="hidden">
+                        <span id="compare-type-b" class="card-type" data-type=""></span>
+                        <h3 id="compare-name-b"></h3>
+                        <p id="compare-brand-b" class="compare-brand"></p>
+                        <span id="compare-price-b" class="compare-price"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Specs comparison table -->
+        <div id="compare-specs-section" class="compare-specs-section hidden">
+            <h2>Specifications Comparison</h2>
+            <table class="compare-specs-table">
+                <thead>
+                    <tr>
+                        <th>Spec</th>
+                        <th id="compare-th-a"></th>
+                        <th id="compare-th-b"></th>
+                    </tr>
+                </thead>
+                <tbody id="compare-specs-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="/js/compare.js"></script>
+</body>
+</html>
+
+
+

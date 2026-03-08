@@ -195,21 +195,9 @@ function renderProduct(c) {
         tbody.innerHTML = rows;
     }
 
-    // Actions
-    document.getElementById('btn-product-edit').addEventListener('click', () => {
-        // Navigate to components page and trigger edit (pass id as hash)
-        window.location.href = `/components.html#edit-${c.id}`;
-    });
-
-    document.getElementById('btn-product-delete').addEventListener('click', async () => {
-        if (!confirm(`Delete "${c.name}"? This action cannot be undone.`)) return;
-        try {
-            await apiFetch(`/components/${c.id}`, { method: 'DELETE' });
-            toast('Component deleted');
-            setTimeout(() => window.location.href = '/components.html', 800);
-        } catch (err) {
-            toast(err.message, 'error');
-        }
+    // Compare action
+    document.getElementById('btn-product-compare').addEventListener('click', () => {
+        window.location.href = `/pages/compare.html?id=${c.id}`;
     });
 }
 

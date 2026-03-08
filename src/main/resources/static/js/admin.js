@@ -18,7 +18,7 @@ async function apiFetch(path, options = {}) {
     });
     if (res.status === 204) return null;
     if (res.status === 401 || res.status === 403) {
-        window.location.href = '/admin-login.html';
+        window.location.href = '/pages/admin-login.html';
         return;
     }
     const data = await res.json();

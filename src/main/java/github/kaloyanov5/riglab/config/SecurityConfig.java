@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Admin pages require auth
-                        .requestMatchers("/admin.html", "/admin.js").hasRole("ADMIN")
+                        .requestMatchers("/pages/admin.html", "/js/admin.js").hasRole("ADMIN")
                         // API mutations require admin
                         .requestMatchers(HttpMethod.POST, "/api/components/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/components/**").hasRole("ADMIN")
@@ -58,19 +58,20 @@ public class SecurityConfig {
                         .anyRequest().permitAll()
                 )
                 .formLogin(form -> form
-                        .loginPage("/admin-login.html")
+                        .loginPage("/pages/admin-login.html")
                         .loginProcessingUrl("/api/admin/login")
-                        .defaultSuccessUrl("/admin.html", true)
-                        .failureUrl("/admin-login.html?error=true")
+                        .defaultSuccessUrl("/pages/admin.html", true)
+                        .failureUrl("/pages/admin-login.html?error=true")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/api/admin/logout")
-                        .logoutSuccessUrl("/admin-login.html?logout=true")
+                        .logoutSuccessUrl("/pages/admin-login.html?logout=true")
                         .permitAll()
                 );
 
         return http.build();
     }
 }
+
 
