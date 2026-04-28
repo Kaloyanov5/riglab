@@ -13,12 +13,13 @@ function toast(message, type = 'success') {
 
 async function apiFetch(path, options = {}) {
     const res = await fetch(API + path, {
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...options.headers },
         ...options,
     });
     if (res.status === 204) return null;
     if (res.status === 401 || res.status === 403) {
-        window.location.href = '/pages/admin-login.html';
+        window.location.href = '/pages/login.html?next=' + encodeURIComponent('/pages/admin.html');
         return;
     }
     const data = await res.json();
@@ -93,8 +94,8 @@ function renderTable(components) {
         <tr>
             <td>
                 ${c.imageUrl
-                    ? `<img class="admin-thumb" src="${esc(c.imageUrl)}" alt="" onerror="this.outerHTML='<span class=\\'admin-thumb-placeholder\\'>&#128187;</span>'">`
-                    : '<span class="admin-thumb-placeholder">&#128187;</span>'
+                    ? `<img class="admin-thumb" src="${esc(c.imageUrl)}" alt="" onerror="this.outerHTML='<span class=\\'admin-thumb-placeholder\\'><i data-lucide=\\'image-off\\'></i></span>'">`
+                    : '<span class="admin-thumb-placeholder"><i data-lucide="image-off"></i></span>'
                 }
             </td>
             <td><strong>${esc(c.name)}</strong></td>
@@ -103,11 +104,16 @@ function renderTable(components) {
             <td class="admin-price">${formatPrice(c.price)}</td>
             <td>${c.powerConsumption ? c.powerConsumption + 'W' : '—'}</td>
             <td class="admin-actions">
-                <button class="btn btn-secondary btn-sm" onclick="editComponent(${c.id})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteComponent(${c.id})">Delete</button>
+                <button class="btn btn-secondary btn-sm" onclick="editComponent(${c.id})">
+                    <i data-lucide="pencil"></i><span>Edit</span>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteComponent(${c.id})">
+                    <i data-lucide="trash-2"></i><span>Delete</span>
+                </button>
             </td>
         </tr>
     `).join('');
+    if (window.RigLab && window.RigLab.icons) window.RigLab.icons();
 }
 
 function renderPagination(pageData) {
@@ -337,6 +343,12 @@ document.getElementById('component-form').addEventListener('submit', async (e) =
     }
 });
 
-// ---- Init ----
-loadComponents();
+// ---- Auth gate ----
+async function initAdmin() {
+    const user = await RigLab.auth.requireAdmin();
+    if (!user) return;
+    loadComponents();
+}
+
+initAdmin();
 
