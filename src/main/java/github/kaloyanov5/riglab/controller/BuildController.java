@@ -1,9 +1,12 @@
 package github.kaloyanov5.riglab.controller;
 
+import github.kaloyanov5.riglab.dto.BatchCompatibilityRequest;
 import github.kaloyanov5.riglab.dto.BuildRequest;
 import github.kaloyanov5.riglab.dto.BuildResponse;
+import github.kaloyanov5.riglab.dto.CompatibilityResult;
 import github.kaloyanov5.riglab.entity.Build;
 import github.kaloyanov5.riglab.entity.Component;
+import github.kaloyanov5.riglab.exception.ResourceNotFoundException;
 import github.kaloyanov5.riglab.service.BuildService;
 import github.kaloyanov5.riglab.service.CompatibilityService;
 import github.kaloyanov5.riglab.service.ComponentService;
@@ -16,9 +19,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,89 +37,97 @@ public class BuildController {
     private final ComponentService componentService;
 
     @GetMapping
-    @Operation(summary = "Get all builds", description = "Retrieve a list of all saved PC builds")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved all builds")
+    @Operation(summary = "Get all builds (admin/debug)")
     public ResponseEntity<List<BuildResponse>> getAllBuilds() {
         return ResponseEntity.ok(buildService.getAllBuilds());
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Get current user's saved builds")
+    public ResponseEntity<List<BuildResponse>> getMyBuilds(Authentication authentication) {
+        return ResponseEntity.ok(buildService.getMyBuilds(authentication.getName()));
+    }
+
     @GetMapping("/{id}")
-    @Operation(summary = "Get build by ID", description = "Retrieve a specific PC build by its ID")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Build found"),
-            @ApiResponse(responseCode = "404", description = "Build not found")
-    })
-    public ResponseEntity<BuildResponse> getBuildById(
-            @Parameter(description = "Build ID") @PathVariable Long id) {
+    @Operation(summary = "Get build by ID")
+    public ResponseEntity<BuildResponse> getBuildById(@Parameter(description = "Build ID") @PathVariable Long id) {
         return ResponseEntity.ok(buildService.getBuildById(id));
     }
 
     @PostMapping
-    @Operation(summary = "Create a new build", description = "Create a new PC build with compatibility validation. Validates socket compatibility, RAM type/slots, form factor, GPU clearance, storage slots, cooler support, and power requirements.")
+    @Operation(summary = "Create a new build", description = "Saves a new build owned by the current user. Validates compatibility.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Build created successfully"),
-            @ApiResponse(responseCode = "400", description = "Validation or compatibility error")
+            @ApiResponse(responseCode = "201", description = "Build created"),
+            @ApiResponse(responseCode = "400", description = "Validation or compatibility error"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
     })
-    public ResponseEntity<BuildResponse> createBuild(@Valid @RequestBody BuildRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(buildService.createBuild(request));
+    public ResponseEntity<BuildResponse> createBuild(@Valid @RequestBody BuildRequest request,
+                                                     Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return ResponseEntity.status(HttpStatus.CREATED).body(buildService.createBuild(request, username));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update a build", description = "Update an existing PC build and re-validate compatibility")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Build updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Validation or compatibility error"),
-            @ApiResponse(responseCode = "404", description = "Build not found")
-    })
-    public ResponseEntity<BuildResponse> updateBuild(
-            @Parameter(description = "Build ID") @PathVariable Long id,
-            @Valid @RequestBody BuildRequest request) {
-        return ResponseEntity.ok(buildService.updateBuild(id, request));
+    @Operation(summary = "Update a build (must be owner)")
+    public ResponseEntity<BuildResponse> updateBuild(@PathVariable Long id,
+                                                     @Valid @RequestBody BuildRequest request,
+                                                     Authentication authentication) {
+        return ResponseEntity.ok(buildService.updateBuild(id, request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a build", description = "Delete a PC build by its ID")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Build deleted successfully"),
-            @ApiResponse(responseCode = "404", description = "Build not found")
-    })
-    public ResponseEntity<Void> deleteBuild(
-            @Parameter(description = "Build ID") @PathVariable Long id) {
-        buildService.deleteBuild(id);
+    @Operation(summary = "Delete a build (must be owner)")
+    public ResponseEntity<Void> deleteBuild(@PathVariable Long id, Authentication authentication) {
+        buildService.deleteBuild(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/check-compatibility")
-    @Operation(summary = "Check build compatibility", description = "Validate compatibility of a build configuration without saving it. Returns a list of compatibility errors (empty if compatible).")
-    @ApiResponse(responseCode = "200", description = "Compatibility check result")
+    @Operation(summary = "Check build compatibility (no save)")
     public ResponseEntity<Map<String, Object>> checkCompatibility(@RequestBody BuildRequest request) {
-        Build build = new Build();
-        build.setName(request.name() != null ? request.name() : "check");
-
-        if (request.cpuId() != null) build.setCpu(componentService.getComponentEntity(request.cpuId()));
-        if (request.gpuId() != null) build.setGpu(componentService.getComponentEntity(request.gpuId()));
-        if (request.motherboardId() != null) build.setMotherboard(componentService.getComponentEntity(request.motherboardId()));
-        if (request.psuId() != null) build.setPsu(componentService.getComponentEntity(request.psuId()));
-        if (request.caseId() != null) build.setPcCase(componentService.getComponentEntity(request.caseId()));
-
-        if (request.ramIds() != null) {
-            List<Component> rams = new ArrayList<>();
-            for (Long id : request.ramIds()) rams.add(componentService.getComponentEntity(id));
-            build.setRamSticks(rams);
-        }
-        if (request.storageIds() != null) {
-            List<Component> storages = new ArrayList<>();
-            for (Long id : request.storageIds()) storages.add(componentService.getComponentEntity(id));
-            build.setStorageDevices(storages);
-        }
-        if (request.coolerIds() != null) {
-            List<Component> coolers = new ArrayList<>();
-            for (Long id : request.coolerIds()) coolers.add(componentService.getComponentEntity(id));
-            build.setCoolers(coolers);
-        }
-
+        Build build = buildService.buildFromRequest(request);
         List<String> errors = compatibilityService.checkBuildCompatibility(build);
         return ResponseEntity.ok(Map.of("compatible", errors.isEmpty(), "errors", errors));
     }
-}
 
+    @PostMapping("/check-compatibility/batch")
+    @Operation(summary = "Batch compatibility check",
+            description = "Substitutes each candidate ID into the given slot of the current build and reports whether each candidate is compatible. One round-trip instead of N.")
+    public ResponseEntity<Map<Long, CompatibilityResult>> checkBatch(@Valid @RequestBody BatchCompatibilityRequest req) {
+        Build base = buildService.buildFromRequest(req.current());
+        Map<Long, CompatibilityResult> results = new LinkedHashMap<>();
+
+        for (Long candidateId : req.candidateIds()) {
+            Component candidate;
+            try {
+                candidate = componentService.getComponentEntity(candidateId);
+            } catch (ResourceNotFoundException ex) {
+                results.put(candidateId, new CompatibilityResult(false, List.of("Component not found")));
+                continue;
+            }
+            substituteIntoSlot(base, req.slot(), candidate);
+            List<String> errors = compatibilityService.checkBuildCompatibility(base);
+            results.put(candidateId, new CompatibilityResult(errors.isEmpty(), errors));
+        }
+
+        return ResponseEntity.ok(results);
+    }
+
+    private void substituteIntoSlot(Build build, String slot, Component candidate) {
+        switch (slot) {
+            case "cpu" -> build.setCpu(candidate);
+            case "gpu" -> build.setGpu(candidate);
+            case "motherboard" -> build.setMotherboard(candidate);
+            case "psu" -> build.setPsu(candidate);
+            case "case" -> build.setPcCase(candidate);
+            case "cooler" -> build.setCooler(candidate);
+            case "ram-0" -> build.setRam1(candidate);
+            case "ram-1" -> build.setRam2(candidate);
+            case "ram-2" -> build.setRam3(candidate);
+            case "ram-3" -> build.setRam4(candidate);
+            case "storage-0" -> build.setStorage1(candidate);
+            case "storage-1" -> build.setStorage2(candidate);
+            default -> throw new IllegalArgumentException("Unknown slot: " + slot);
+        }
+    }
+}

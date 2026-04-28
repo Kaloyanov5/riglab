@@ -24,7 +24,7 @@ public record BuildRequest(
         Long motherboardId,
 
         @NotNull(message = "At least one RAM stick is required")
-        @Schema(description = "List of RAM component IDs", example = "[4, 5]")
+        @Schema(description = "List of RAM component IDs (1-4, may repeat the same SKU for kits)", example = "[4, 4]")
         List<Long> ramIds,
 
         @NotNull(message = "PSU is required")
@@ -35,10 +35,9 @@ public record BuildRequest(
         @Schema(description = "Case component ID", example = "7")
         Long caseId,
 
-        @Schema(description = "List of storage component IDs (HDD, SSD, NVMe)")
+        @Schema(description = "List of storage component IDs (up to 2)")
         List<Long> storageIds,
 
-        @Schema(description = "List of cooler component IDs")
+        @Schema(description = "List of cooler component IDs (currently 0-1)")
         List<Long> coolerIds
 ) {}
-

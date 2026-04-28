@@ -31,6 +31,7 @@ public class CompatibilityService {
         validateGpuClearance(build, errors);
         validateStorageSlots(build, errors);
         validateCoolerSocketSupport(build, errors);
+        validateCoolerTdp(build, errors);
         validatePowerRequirements(build, errors);
 
         return errors;
@@ -70,9 +71,6 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates that the CPU socket matches the motherboard socket.
-     */
     private void validateCpuMotherboardSocket(Build build, List<String> errors) {
         if (build.getCpu() == null || build.getMotherboard() == null) return;
 
@@ -86,21 +84,16 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates RAM type compatibility with motherboard and RAM slot count.
-     */
     private void validateRamCompatibility(Build build, List<String> errors) {
         if (build.getMotherboard() == null || build.getRamSticks().isEmpty()) return;
 
         MotherboardDetails mbDetails = build.getMotherboard().getMotherboardDetails();
         if (mbDetails == null) return;
 
-        // Validate RAM slot count
         if (mbDetails.getRamSlots() != null && build.getRamSticks().size() > mbDetails.getRamSlots()) {
             errors.add("Too many RAM sticks (" + build.getRamSticks().size() + ") for motherboard which has " + mbDetails.getRamSlots() + " RAM slot(s)");
         }
 
-        // Validate RAM type compatibility
         for (Component ram : build.getRamSticks()) {
             RamDetails ramDetails = ram.getRamDetails();
             if (ramDetails != null && mbDetails.getSupportedRamType() != null) {
@@ -111,9 +104,6 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates that the motherboard form factor is supported by the case.
-     */
     private void validateFormFactorCompatibility(Build build, List<String> errors) {
         if (build.getMotherboard() == null || build.getPcCase() == null) return;
 
@@ -137,9 +127,6 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates that the GPU fits inside the case.
-     */
     private void validateGpuClearance(Build build, List<String> errors) {
         if (build.getGpu() == null || build.getPcCase() == null) return;
 
@@ -155,9 +142,6 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates that storage devices don't exceed available motherboard slots (M.2 + SATA).
-     */
     private void validateStorageSlots(Build build, List<String> errors) {
         if (build.getMotherboard() == null || build.getStorageDevices().isEmpty()) return;
 
@@ -187,9 +171,6 @@ public class CompatibilityService {
         }
     }
 
-    /**
-     * Validates that coolers support the CPU socket type.
-     */
     private void validateCoolerSocketSupport(Build build, List<String> errors) {
         if (build.getCpu() == null || build.getCoolers().isEmpty()) return;
 
@@ -214,13 +195,26 @@ public class CompatibilityService {
     }
 
     /**
-     * Validates that PSU wattage is sufficient for total system power draw.
-     * Uses GPU recommended PSU wattage if available.
+     * Cooler must be rated for at least the CPU's TDP (Component.powerConsumption used as proxy for TDP).
      */
+    private void validateCoolerTdp(Build build, List<String> errors) {
+        if (build.getCpu() == null || build.getCoolers().isEmpty()) return;
+        Integer cpuTdp = build.getCpu().getPowerConsumption();
+        if (cpuTdp == null) return;
+
+        for (Component cooler : build.getCoolers()) {
+            CoolerDetails details = cooler.getCoolerDetails();
+            if (details != null && details.getMaxTdp() != null) {
+                if (details.getMaxTdp() < cpuTdp) {
+                    errors.add("Cooler '" + cooler.getName() + "' supports up to " + details.getMaxTdp() + "W but CPU TDP is " + cpuTdp + "W");
+                }
+            }
+        }
+    }
+
     private void validatePowerRequirements(Build build, List<String> errors) {
         int totalPower = calculateTotalPowerConsumption(build);
 
-        // Check against PSU wattage from PsuDetails
         if (build.getPsu() != null) {
             PsuDetails psuDetails = build.getPsu().getPsuDetails();
             if (psuDetails != null && psuDetails.getWattage() != null) {
@@ -228,14 +222,12 @@ public class CompatibilityService {
                     errors.add("PSU wattage (" + psuDetails.getWattage() + "W) is insufficient for system power draw (" + totalPower + "W). Recommended: at least " + (int)(totalPower * 1.2) + "W");
                 }
             } else if (build.getPsu().getPowerConsumption() != null) {
-                // Fallback to generic powerConsumption field
                 if (build.getPsu().getPowerConsumption() < totalPower) {
                     errors.add("PSU wattage (" + build.getPsu().getPowerConsumption() + "W) is insufficient for system power draw (" + totalPower + "W)");
                 }
             }
         }
 
-        // Check GPU recommended PSU
         if (build.getGpu() != null) {
             GpuDetails gpuDetails = build.getGpu().getGpuDetails();
             if (gpuDetails != null && gpuDetails.getRecommendedPsu() != null && build.getPsu() != null) {
@@ -251,7 +243,7 @@ public class CompatibilityService {
         }
     }
 
-    private int calculateTotalPowerConsumption(Build build) {
+    public int calculateTotalPowerConsumption(Build build) {
         int total = 0;
         if (build.getCpu() != null && build.getCpu().getPowerConsumption() != null) {
             total += build.getCpu().getPowerConsumption();
@@ -274,4 +266,3 @@ public class CompatibilityService {
         return total;
     }
 }
-

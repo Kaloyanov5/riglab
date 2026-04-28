@@ -8,6 +8,7 @@ import java.util.List;
 public record BuildResponse(
         Long id,
         String name,
+        String ownerUsername,
         ComponentResponse cpu,
         ComponentResponse gpu,
         ComponentResponse motherboard,
@@ -25,6 +26,7 @@ public record BuildResponse(
         return new BuildResponse(
                 build.getId(),
                 build.getName(),
+                build.getOwner() != null ? build.getOwner().getUsername() : null,
                 build.getCpu() != null ? ComponentResponse.fromEntity(build.getCpu()) : null,
                 build.getGpu() != null ? ComponentResponse.fromEntity(build.getGpu()) : null,
                 build.getMotherboard() != null ? ComponentResponse.fromEntity(build.getMotherboard()) : null,
@@ -50,21 +52,14 @@ public record BuildResponse(
             total += build.getMotherboard().getPowerConsumption();
         }
         for (Component ram : build.getRamSticks()) {
-            if (ram.getPowerConsumption() != null) {
-                total += ram.getPowerConsumption();
-            }
+            if (ram.getPowerConsumption() != null) total += ram.getPowerConsumption();
         }
         for (Component storage : build.getStorageDevices()) {
-            if (storage.getPowerConsumption() != null) {
-                total += storage.getPowerConsumption();
-            }
+            if (storage.getPowerConsumption() != null) total += storage.getPowerConsumption();
         }
         for (Component cooler : build.getCoolers()) {
-            if (cooler.getPowerConsumption() != null) {
-                total += cooler.getPowerConsumption();
-            }
+            if (cooler.getPowerConsumption() != null) total += cooler.getPowerConsumption();
         }
         return total;
     }
 }
-
