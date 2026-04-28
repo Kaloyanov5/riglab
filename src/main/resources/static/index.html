@@ -11,8 +11,7 @@
 <header class="header">
     <div class="header-brand">
         <a href="/" class="brand-link">
-            <span class="logo">&#9881;</span>
-            <h1>RigLab</h1>
+            <img src="/assets/riglab.svg" alt="RigLab" class="brand-logo">
         </a>
     </div>
     <nav class="nav">
@@ -26,7 +25,7 @@
 
 <main class="configurator-main">
     <div class="config-header">
-        <h2>&#128296; PC Build Configurator</h2>
+        <h2><i data-lucide="cpu" class="icon"></i>PC Build Configurator</h2>
         <p class="config-subtitle">Select your components to build the perfect PC. Incompatible parts are shown in red.</p>
     </div>
 
@@ -41,8 +40,27 @@
         </div>
         <div class="summary-actions">
             <input type="text" id="build-name" class="input" placeholder="Build name..." value="My Build">
-            <button class="btn btn-primary" id="btn-save-build">&#128190; Save Build</button>
+            <button class="btn btn-primary" id="btn-save-build">
+                <i data-lucide="save"></i><span>Save Build</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-clear-build" title="Clear all selections">
+                <i data-lucide="rotate-ccw"></i><span>Clear</span>
+            </button>
         </div>
+    </div>
+
+    <!-- Live compatibility warnings panel -->
+    <div id="compat-panel" class="compat-panel hidden">
+        <div class="compat-panel-header">
+            <i data-lucide="alert-triangle" class="compat-panel-icon"></i>
+            <strong>Compatibility issues</strong>
+            <span class="compat-panel-count" id="compat-count"></span>
+        </div>
+        <ul id="compat-list" class="compat-list"></ul>
+    </div>
+    <div id="compat-ok" class="compat-ok hidden">
+        <i data-lucide="check-circle-2" class="compat-panel-icon"></i>
+        <span>All selected components are compatible.</span>
     </div>
 
     <div class="config-table">
@@ -249,6 +267,8 @@
     </div>
 </main>
 
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/js/auth.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
