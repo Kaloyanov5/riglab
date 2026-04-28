@@ -22,19 +22,27 @@ public class MotherboardDetails {
 
     @NotBlank
     private String socket;
+
     @NotBlank
     private String chipset;
+
     @NotBlank
-    private String formFactor; // ATX, Micro-ATX
+    @Column(name = "form_factor")
+    private String formFactor;
+
     @NotBlank
-    private String supportedRamType; // DDR4 / DDR5
+    @Column(name = "supported_ram_type")
+    private String supportedRamType;
 
     @Positive
-    private Integer ramSlots; // Number of RAM slots (2, 4, etc.)
+    @Column(name = "ram_slots")
+    private Integer ramSlots;
 
     @Positive
-    private Integer m2Slots; // Number of M.2 slots for NVMe storage
+    @Column(name = "m2_slots")
+    private Integer m2Slots;
 
     @Positive
-    private Integer sataConnectors; // Number of SATA ports
+    @Column(name = "sata_connectors")
+    private Integer sataConnectors;
 }
