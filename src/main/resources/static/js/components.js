@@ -132,8 +132,8 @@ function renderComponents(components) {
     list.innerHTML = components.map(c => `
         <div class="card" onclick="viewComponent(${c.id})" style="cursor:pointer;">
             ${c.imageUrl
-                ? `<img class="card-img" src="${esc(c.imageUrl)}" alt="${esc(c.name)}" onerror="this.outerHTML='<div class=\\'card-img-placeholder\\'>&#128187;</div>'">`
-                : '<div class="card-img-placeholder">&#128187;</div>'
+                ? `<img class="card-img" src="${esc(c.imageUrl)}" alt="${esc(c.name)}" onerror="this.outerHTML='<div class=\\'card-img-placeholder\\'><i data-lucide=\\'image-off\\'></i></div>'">`
+                : '<div class="card-img-placeholder"><i data-lucide="image-off"></i></div>'
             }
             <div class="card-body">
                 <div class="card-header">
@@ -150,12 +150,15 @@ function renderComponents(components) {
                         ${c.powerConsumption ? `<span class="card-power">&nbsp;&bull; ${c.powerConsumption}W</span>` : ''}
                     </div>
                     <div class="card-actions">
-                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); compareComponent(${c.id})">&#x2696; Compare</button>
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); compareComponent(${c.id})">
+                            <i data-lucide="git-compare"></i><span>Compare</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     `).join('');
+    if (window.RigLab && window.RigLab.icons) window.RigLab.icons();
 }
 
 function renderDetailChips(c) {

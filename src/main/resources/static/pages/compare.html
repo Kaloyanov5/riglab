@@ -11,8 +11,7 @@
 <header class="header">
     <div class="header-brand">
         <a href="/" class="brand-link">
-            <span class="logo">&#9881;</span>
-            <h1>RigLab</h1>
+            <img src="/assets/riglab.svg" alt="RigLab" class="brand-logo">
         </a>
     </div>
     <nav class="nav">
@@ -26,10 +25,12 @@
 
 <main class="compare-page">
     <div class="product-back">
-        <a href="/pages/components.html" class="btn btn-secondary btn-sm">&larr; Back to Components</a>
+        <a href="/pages/components.html" class="btn btn-secondary btn-sm">
+            <i data-lucide="arrow-left"></i><span>Back to Components</span>
+        </a>
     </div>
 
-    <h2 class="compare-title">&#x2696; Compare Components</h2>
+    <h2 class="compare-title"><i data-lucide="git-compare" class="icon"></i>Compare Components</h2>
 
     <div id="compare-loading" class="loading">
         <div class="spinner"></div>
@@ -37,7 +38,7 @@
     </div>
 
     <div id="compare-error" class="empty-state hidden">
-        <div class="empty-icon">&#9888;</div>
+        <div class="empty-icon"><i data-lucide="alert-triangle"></i></div>
         <p id="compare-error-msg">Component not found.</p>
     </div>
 
@@ -58,7 +59,7 @@
                 </div>
             </div>
 
-            <div class="compare-vs">VS</div>
+            <div class="compare-vs"><i data-lucide="git-compare-arrows"></i><span>VS</span></div>
 
             <!-- Component B (user-selected) -->
             <div class="compare-card" id="compare-card-b">
@@ -100,6 +101,8 @@
     </div>
 </main>
 
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/js/auth.js"></script>
 <script src="/js/compare.js"></script>
 </body>
 </html>
