@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RigLab - Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-brand">
+        <a href="/" class="brand-link">
+            <img src="/assets/riglab.svg" alt="RigLab" class="brand-logo">
+        </a>
+    </div>
+    <nav class="nav">
+        <a href="/" class="nav-btn">Build</a>
+        <a href="/pages/components.html" class="nav-btn">Components</a>
+    </nav>
+</header>
+
+<main class="auth-page">
+    <div class="auth-card">
+        <div class="auth-tabs">
+            <button class="auth-tab active" data-mode="login">Login</button>
+            <button class="auth-tab" data-mode="register">Sign Up</button>
+        </div>
+
+        <div id="auth-error" class="login-error hidden"></div>
+        <div id="auth-success" class="login-success hidden"></div>
+
+        <!-- Login form -->
+        <form id="login-form" class="auth-form">
+            <h2><i data-lucide="user-round" class="icon"></i>Welcome back</h2>
+            <p class="auth-subtitle">Sign in to save and manage your builds.</p>
+
+            <div class="form-group">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" class="input" required autofocus placeholder="username">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" class="input" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary login-btn">Sign In</button>
+        </form>
+
+        <!-- Register form -->
+        <form id="register-form" class="auth-form hidden">
+            <h2><i data-lucide="shield-check" class="icon"></i>Create account</h2>
+            <p class="auth-subtitle">Save your builds and revisit them anytime.</p>
+
+            <div class="form-group">
+                <label for="reg-username">Username</label>
+                <input type="text" id="reg-username" class="input" required placeholder="3-32 chars: A-Z, 0-9, _ . -">
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password</label>
+                <input type="password" id="reg-password" class="input" required placeholder="At least 6 characters">
+            </div>
+            <div class="form-group">
+                <label for="reg-confirm">Confirm password</label>
+                <input type="password" id="reg-confirm" class="input" required placeholder="Repeat password">
+            </div>
+            <button type="submit" class="btn btn-primary login-btn">Create Account</button>
+        </form>
+
+        <a href="/" class="login-back">
+            <i data-lucide="arrow-left"></i><span>Back to RigLab</span>
+        </a>
+    </div>
+</main>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const initialMode = params.get('mode') === 'register' ? 'register' : 'login';
+    const next = params.get('next') || '/';
+
+    const errorEl = document.getElementById('auth-error');
+    const successEl = document.getElementById('auth-success');
+
+    function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove('hidden');
+        successEl.classList.add('hidden');
+    }
+    function clearMessages() {
+        errorEl.classList.add('hidden');
+        successEl.classList.add('hidden');
+    }
+
+    function setMode(mode) {
+        document.querySelectorAll('.auth-tab').forEach(t =>
+            t.classList.toggle('active', t.dataset.mode === mode));
+        document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
+        document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
+        clearMessages();
+    }
+
+    document.querySelectorAll('.auth-tab').forEach(t =>
+        t.addEventListener('click', () => setMode(t.dataset.mode)));
+    setMode(initialMode);
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearMessages();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        try {
+            await RigLab.auth.login(username, password);
+            window.location.href = next;
+        } catch (err) {
+            showError(err.message);
+        }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearMessages();
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const confirm = document.getElementById('reg-confirm').value;
+        if (password !== confirm) {
+            showError('Passwords do not match');
+            return;
+        }
+        try {
+            await RigLab.auth.register(username, password);
+            window.location.href = next;
+        } catch (err) {
+            showError(err.message);
+        }
+    });
+</script>
+</body>
+</html>
