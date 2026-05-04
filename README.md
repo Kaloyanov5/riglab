@@ -99,7 +99,3 @@ src/main/resources/
 └── static/          # Frontend (pages/, js/, css/, assets/)
 ```
 
-## 📖 Документация
-
-- [Фаза 1: Дефиниция и планиране](docs/PHASE_1_Definition_and_Planning.md)
-- [Фаза 2: Проектиране и подготовка](docs/PHASE_2_Design_and_Preparation.md)
