@@ -6,6 +6,7 @@ import github.kaloyanov5.riglab.entity.Component;
 import github.kaloyanov5.riglab.entity.ComponentType;
 import github.kaloyanov5.riglab.entity.component_details.*;
 import github.kaloyanov5.riglab.exception.ResourceNotFoundException;
+import github.kaloyanov5.riglab.repository.BuildRepository;
 import github.kaloyanov5.riglab.repository.ComponentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,7 @@ import java.util.List;
 public class ComponentService {
 
     private final ComponentRepository componentRepository;
+    private final BuildRepository buildRepository;
 
     public List<ComponentResponse> getAllComponents() {
         return componentRepository.findAll().stream()
@@ -115,6 +117,7 @@ public class ComponentService {
         if (!componentRepository.existsById(id)) {
             throw new ResourceNotFoundException("Component", id);
         }
+        buildRepository.clearComponentReferences(id);
         componentRepository.deleteById(id);
     }
 
