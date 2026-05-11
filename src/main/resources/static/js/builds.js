@@ -98,7 +98,10 @@ async function loadBuilds() {
     try {
         const builds = await apiFetch('/builds/me');
         loading.classList.add('hidden');
+        empty.classList.add('hidden');
+        list.innerHTML = '';
         if (!builds || builds.length === 0) {
+            list.classList.add('hidden');
             empty.classList.remove('hidden');
             return;
         }
