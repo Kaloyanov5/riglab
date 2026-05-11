@@ -27,31 +27,31 @@ public class Build {
     @JoinColumn(name = "owner_id")
     private User owner;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Component cpu;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Component gpu;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Component motherboard;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Component psu;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Component pcCase;
 
     // Explicit slots — allow the same Component (e.g. matched RAM kit) in multiple slots.
-    @ManyToOne private Component ram1;
-    @ManyToOne private Component ram2;
-    @ManyToOne private Component ram3;
-    @ManyToOne private Component ram4;
+    @ManyToOne(fetch = FetchType.LAZY) private Component ram1;
+    @ManyToOne(fetch = FetchType.LAZY) private Component ram2;
+    @ManyToOne(fetch = FetchType.LAZY) private Component ram3;
+    @ManyToOne(fetch = FetchType.LAZY) private Component ram4;
 
-    @ManyToOne private Component storage1;
-    @ManyToOne private Component storage2;
+    @ManyToOne(fetch = FetchType.LAZY) private Component storage1;
+    @ManyToOne(fetch = FetchType.LAZY) private Component storage2;
 
-    @ManyToOne private Component cooler;
+    @ManyToOne(fetch = FetchType.LAZY) private Component cooler;
 
     @Positive
     private Double totalPrice;
