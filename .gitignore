@@ -19,10 +19,8 @@ target/
 *.iml
 *.ipr
 
-### Properties File ###
-*.properties
-*.yml
-*.yaml
+### Local secrets ###
+.env
 
 ### NetBeans ###
 /nbproject/private/

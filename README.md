@@ -61,6 +61,71 @@ RigLab е уеб приложение, което позволява на пот
    - Swagger UI: http://localhost:8080/swagger-ui.html
    - Admin панел: http://localhost:8080/pages/admin.html
 
+## 🐳 Стартиране с Docker
+
+Целият стек (приложение + база данни) се вдига с една команда чрез Docker Compose — **не** са нужни локално инсталирани Java, Maven или MySQL.
+
+### Предварителни изисквания
+- Docker Engine 20+
+- Docker Compose v2
+
+### Бърз старт
+
+```bash
+git clone https://github.com/Kaloyanov5/riglab.git
+cd riglab
+docker compose up -d --build
+```
+
+След като контейнерите се вдигнат, приложението е достъпно на http://localhost:8080 (Swagger UI: http://localhost:8080/swagger-ui.html). По желание може да копирате `.env.example` като `.env` и да зададете собствени пароли преди стартиране.
+
+Спиране:
+```bash
+docker compose down        # спира контейнерите
+docker compose down -v     # + изтрива тома с данните на базата
+```
+
+### Структура на Docker конфигурацията
+
+| Файл | Роля |
+|---|---|
+| `Dockerfile` | Multi-stage build на бекенда: Maven + JDK 23 компилира fat-jar, който се копира в лек Temurin 23 JRE образ (стартиран като non-root потребител). |
+| `compose.yml` | Дефинира и свързва двете услуги — `app` и `db` — заедно с обща мрежа и том за данните. |
+| `.dockerignore` | Изключва `target/`, `.git`, документи и др. от build контекста за по-малък и бърз build. |
+| `.env.example` | Примерни environment променливи (копира се като `.env`). |
+
+### Услуги (компоненти)
+
+| Услуга | Образ | Порт | Роля |
+|---|---|---|---|
+| `app` | `kaloyanov5/riglab` (собствен) | `8080` | Spring Boot бекенд, който обслужва REST API-то **и** статичния frontend от един fat-jar. |
+| `db` | `mysql:8.4` (официален) | `3306` | MySQL база данни за компоненти, потребители и билдове. Зарежда seed-а от `data.sql` при първо стартиране. |
+
+### Комуникация между услугите
+
+- Двете услуги са в обща Docker bridge мрежа, която Compose създава автоматично. В нея `app` достига базата **по име на услугата** — `db:3306` — без нужда от IP адреси.
+- Връзката е конфигурирана чрез `SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/riglab_db...`, която Spring Boot прихваща през relaxed binding и припокрива `application.yaml` **без промяна в кода**.
+- `app` изчаква `db` чрез `depends_on: condition: service_healthy` в комбинация с MySQL `healthcheck`, така че бекендът стартира едва когато базата е готова да приема връзки.
+- Данните на MySQL се пазят в именован том (`riglab-db-data`), който преживява рестарт на контейнерите.
+
+### Docker Hub
+
+Образът на бекенда е публично достъпен:
+
+➡️ **https://hub.docker.com/r/kaloyanov5/riglab**
+
+```bash
+docker pull kaloyanov5/riglab:latest
+```
+
+#### Изграждане и качване на образа
+
+```bash
+docker login
+docker compose build                 # изгражда kaloyanov5/riglab:latest
+docker push kaloyanov5/riglab:latest
+```
+
 ## 🔐 Автентикация и роли
 
 - **USER** - може да създава, преглежда и трие собствените си билдове.

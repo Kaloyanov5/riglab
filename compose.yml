@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: riglab-db
+    environment:
+      MYSQL_DATABASE: riglab_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - riglab-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: kaloyanov5/riglab:latest
+    container_name: riglab-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Point Spring Boot at the db service (relaxed binding overrides application.yaml)
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/riglab_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  riglab-db-data:

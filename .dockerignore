@@ -1,0 +1,25 @@
+# Build output
+target/
+
+# Version control
+.git/
+.gitignore
+
+# IDE / tooling
+.idea/
+.vscode/
+.mvn/
+mvnw
+mvnw.cmd
+*.iml
+
+# Docs & local files (not needed inside the image)
+docs/
+*.pdf
+*.md
+
+# Tests are skipped during the image build
+src/test/
+
+# Local environment
+.env
